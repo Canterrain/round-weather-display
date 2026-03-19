@@ -1,0 +1,38 @@
+
+# Never commit dependencies
+node_modules/
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Electron / build outputs
+dist/
+out/
+release/
+build/
+
+# OS / editor
+.DS_Store
+
+# Local backups
+*.bak
+
+# Local config / secrets
+config*.json
+!config.example.json
+
+# User-provided background overrides
+public/assets/background.jpg
+public/assets/background.png
+public/assets/background.webp
+public/assets/background-day.jpg
+public/assets/background-day.png
+public/assets/background-day.webp
+public/assets/background-night.jpg
+public/assets/background-night.png
+public/assets/background-night.webp
+
+# Optional icon themes and local backups
+public/assets/icon-themes/
+public/assets/icons.base/
