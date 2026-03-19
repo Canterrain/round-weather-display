@@ -1,47 +1,40 @@
+const FALLBACK_WEATHER = {
+  temp: 52,
+  high: 61,
+  low: 48,
+  code: 2,
+  is_day: true,
+  thundersnow: false
+};
+
+function renderWeather(current) {
+  const icon = document.getElementById('current-icon');
+  const temp = document.getElementById('current-temp');
+  const highLow = document.getElementById('high-low');
+
+  if (!icon || !temp || !highLow) return;
+
+  const iconKey = mapIconFromMeteo(current.code, current.is_day, current.thundersnow);
+
+  icon.src = `assets/icons/${iconKey}.svg`;
+  temp.textContent = `${current.temp}°`;
+  highLow.textContent = `H:${current.high}°  L:${current.low}°`;
+}
+
 async function fetchWeather() {
   try {
-    const response = await fetch('/weather');
+    const response = await fetch('/weather', { cache: 'no-store' });
     const data = await response.json();
 
-    if (data.error) {
-      console.error('Weather fetch error:', data.error);
+    if (!response.ok || data.error || !data.current) {
+      renderWeather(FALLBACK_WEATHER);
       return;
     }
 
-    const { current, forecast } = data;
-
-    // Update current weather
-    document.getElementById('current-temp').textContent = `${current.temp}°`;
-    document.getElementById('high').textContent = `${current.high}°`;
-    document.getElementById('low').textContent = `${current.low}°`;
-
-    const currentIconKey = mapIconFromMeteo(current.code, current.is_day, current.thundersnow);
-    document.getElementById('current-icon').src = `assets/icons/${currentIconKey}.svg`;
-
-    // Update forecast
-    const forecastContainer = document.getElementById('forecast');
-    forecastContainer.innerHTML = '';
-
-    forecast.forEach((day, index) => {
-      const dayDiv = document.createElement('div');
-      dayDiv.className = 'forecast-day';
-
-      const dayName = new Date();
-      dayName.setDate(dayName.getDate() + index + 1);
-      const weekday = dayName.toLocaleDateString('en-US', { weekday: 'short' });
-
-      const iconKey = mapIconFromMeteo(day.code, day.is_day, day.thundersnow);
-
-      dayDiv.innerHTML = `
-        <div>${weekday}</div>
-        <img src="assets/icons/${iconKey}.svg" alt="Weather Icon"/>
-        <div>${day.temp}°</div>
-      `;
-      forecastContainer.appendChild(dayDiv);
-    });
-
+    renderWeather(data.current);
   } catch (error) {
     console.error('Weather fetch failed:', error);
+    renderWeather(FALLBACK_WEATHER);
   }
 }
 
@@ -90,5 +83,6 @@ function mapIconFromMeteo(code, isDay, thundersnow) {
   return "cloudy";
 }
 
+renderWeather(FALLBACK_WEATHER);
 fetchWeather();
-setInterval(fetchWeather, 30 * 60 * 1000);
+setInterval(fetchWeather, 10 * 60 * 1000);

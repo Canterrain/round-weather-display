@@ -4,18 +4,20 @@ set -euo pipefail
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RWC="$APP_DIR/scripts/rwc.sh"
 
+APP_NAME="round-weather-display"
+
 echo "[stop] Stopping weather display..."
 
 # 1) Stop PM2 if it’s managing it (Bookworm/X11 path)
 if command -v pm2 >/dev/null 2>&1; then
   # Stop only if this process exists in pm2
-  if pm2 jlist 2>/dev/null | grep -q "\"name\":\"weather-display\""; then
-    pm2 stop weather-display >/dev/null 2>&1 || true
+  if pm2 jlist 2>/dev/null | grep -q "\"name\":\"$APP_NAME\""; then
+    pm2 stop "$APP_NAME" >/dev/null 2>&1 || true
   fi
 fi
 
 # 2) Kill Electron launched from THIS app directory only
-# This matches the command line that includes ".../weather-display/..."
+# This matches the command line for this app directory only.
 pkill -f "${APP_DIR//\//\\/}.*node_modules\/\.bin\/electron" 2>/dev/null || true
 pkill -f "${APP_DIR//\//\\/}.*electron" 2>/dev/null || true
 

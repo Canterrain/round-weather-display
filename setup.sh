@@ -48,7 +48,7 @@ fi
 # -----------------------------------------------------------------------------
 SETUP_BRANCH="main"
 REPO_BRANCH="${WEATHER_BRANCH:-$SETUP_BRANCH}"
-REPO_URL="${WEATHER_REPO_URL:-https://github.com/Canterrain/weather-display.git}"
+REPO_URL="${WEATHER_REPO_URL:-}"
 
 # -----------------------------------------------------------------------------
 # Config prompts
@@ -172,13 +172,16 @@ npm config set fetch-retry-maxtimeout 120000 >/dev/null 2>&1 || true
 # -----------------------------------------------------------------------------
 # Backup existing config.json before refresh
 # -----------------------------------------------------------------------------
-TARGET_DIR="$HOME/weather-display"
+APP_NAME="round-weather-display"
+TARGET_DIR="$HOME/$APP_NAME"
+BACKUP_DIR="$HOME/${APP_NAME}-backups"
+SETUP_TMP="/tmp/${APP_NAME}-setup.sh"
 
 if [[ -f "$TARGET_DIR/config.json" ]]; then
   ts="$(date +%Y%m%d-%H%M%S)"
-  mkdir -p "$HOME/weather-display-backups"
-  cp -f "$TARGET_DIR/config.json" "$HOME/weather-display-backups/config.json.$ts.bak"
-  echo "Backed up existing config.json to: ~/weather-display-backups/config.json.$ts.bak"
+  mkdir -p "$BACKUP_DIR"
+  cp -f "$TARGET_DIR/config.json" "$BACKUP_DIR/config.json.$ts.bak"
+  echo "Backed up existing config.json to: ~/${APP_NAME}-backups/config.json.$ts.bak"
 fi
 
 # -----------------------------------------------------------------------------
@@ -188,14 +191,20 @@ fi
 if [[ "$(pwd -P)" == "$TARGET_DIR"* ]]; then
   echo "Setup is running from inside $TARGET_DIR."
   echo "Re-launching from HOME so refresh can proceed safely..."
-  tmp="/tmp/weather-display-setup.sh"
-  cp -f "$0" "$tmp"
-  chmod +x "$tmp"
+  cp -f "$0" "$SETUP_TMP"
+  chmod +x "$SETUP_TMP"
   cd "$HOME"
-  exec bash "$tmp"
+  exec bash "$SETUP_TMP"
 fi
 
-echo "Cloning weather-display from GitHub..."
+if [[ -z "$REPO_URL" ]]; then
+  echo "ERROR: No repository URL configured for refresh install."
+  echo "Set WEATHER_REPO_URL to your fork URL when running setup.sh."
+  echo 'Example: WEATHER_REPO_URL="https://github.com/<you>/<repo>.git" bash setup.sh'
+  exit 1
+fi
+
+echo "Cloning $APP_NAME from configured repository..."
 rm -rf "$TARGET_DIR"
 git clone --branch "$REPO_BRANCH" --single-branch "$REPO_URL" "$TARGET_DIR"
 
@@ -361,7 +370,7 @@ After=graphical-session.target graphical.target
 Type=oneshot
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=%h/.Xauthority
-ExecStart=%h/weather-display/rotate_display.sh
+ExecStart=%h/round-weather-display/rotate_display.sh
 TimeoutSec=120
 
 [Install]
@@ -462,7 +471,7 @@ configure_x11_pm2() {
   echo "Installing PM2..."
   sudo npm install -g pm2
 
-  pm2 start "$TARGET_DIR/scripts/rwc.sh" --name weather-display || true
+  pm2 start "$TARGET_DIR/scripts/rwc.sh" --name "$APP_NAME" || true
 
   pm2StartupCmd="$(pm2 startup systemd -u "$USER" --hp "/home/$USER" | grep sudo || true)"
   if [[ -n "$pm2StartupCmd" ]]; then
@@ -494,7 +503,7 @@ echo "---------------------------------------"
 echo "Installed to: $TARGET_DIR"
 echo "Branch: $REPO_BRANCH"
 echo "If you ever re-run setup.sh, your previous config.json backups are in:"
-echo "  ~/weather-display-backups/"
+echo "  ~/${APP_NAME}-backups/"
 echo ""
 
 if [[ "$SESSION_TYPE" == "wayland" ]]; then

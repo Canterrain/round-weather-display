@@ -1,382 +1,253 @@
-/* public/style.css */
-
-html {
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
   cursor: none;
 }
 
-/* Unified palette + dimmer controls */
 :root {
-  --text-primary: #ffffff;
-  --text-secondary: #d9d9d6;
-  --text-muted: #cccccc;
-
-  /* Background readability (scrim) */
-  --day-dim: 0.22;
-  --day-vignette: 0.35;
-
-  /* Night background scrim (optional) */
-  --night-bg-dim: 0.10;
-  --night-bg-vignette: 0.35;
-
-  /*
-    REAL NIGHT DIMMER (dims text + icons + everything in .container)
-    1.00 = no dim
-    0.80 = slightly dim
-    0.70 = clearly dimmer
-    0.60 = very dim
-    0.50 = bedtime dim
-  */
-  --night-ui-dim: 0.55;
+  --bg-outer: #030507;
+  --bg-inner: #111723;
+  --face-edge: rgba(255, 255, 255, 0.08);
+  --face-glow: rgba(103, 139, 255, 0.08);
+  --text-primary: #f8fbff;
+  --text-secondary: rgba(235, 242, 255, 0.72);
+  --tick-major: rgba(255, 255, 255, 0.92);
+  --tick-minor: rgba(255, 255, 255, 0.5);
+  --marker-major: rgba(244, 248, 255, 0.88);
+  --marker-minor: rgba(224, 233, 247, 0.6);
+  --hour-hand: #f4f6fb;
+  --minute-hand: #b8ddff;
+  --hub-shadow: rgba(0, 0, 0, 0.45);
 }
 
 body {
-  position: relative;
-  margin: 0;
-  padding: 0;
-  background-color: black;
-  background-size: cover;
-  background-position: center center;
-  background-repeat: no-repeat;
-  color: var(--text-primary);
-  font-family: 'Lucida Console', 'Lucida Sans Typewriter', 'Monaco', 'Courier New', monospace;
-  overflow: hidden;
-}
-
-/* Scrim layer (darkens only the BACKGROUND, not the UI) */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background: transparent;
-}
-
-/* Mode classes set by background-switcher.js */
-body.day-background {
-  color: var(--text-primary);
-}
-
-/* Day: gentle darkening + vignette for readability on light / busy backgrounds */
-body.day-background::before {
   background:
-    radial-gradient(
-      ellipse at center,
-      rgba(0,0,0,0.08) 0%,
-      rgba(0,0,0,var(--day-vignette)) 85%
-    ),
-    linear-gradient(
-      rgba(0,0,0,var(--day-dim)),
-      rgba(0,0,0,var(--day-dim))
-    );
+    radial-gradient(circle at center, rgba(39, 53, 79, 0.55) 0%, rgba(8, 12, 18, 0.96) 58%, #010203 100%);
+  color: var(--text-primary);
+  font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
 }
 
-body.night-background {
-  background-color: black;
-  background-size: cover;
-  background-position: center;
-  color: var(--text-secondary);
-}
-
-/* Night: optional mild scrim (mostly for backgrounds, not required for dimming UI) */
-body.night-background::before {
-  background:
-    radial-gradient(
-      ellipse at center,
-      rgba(0,0,0,0.10) 0%,
-      rgba(0,0,0,var(--night-bg-vignette)) 85%
-    ),
-    linear-gradient(
-      rgba(0,0,0,var(--night-bg-dim)),
-      rgba(0,0,0,var(--night-bg-dim))
-    );
-}
-
-/*
-  IMPORTANT:
-  This is the REAL dimmer. It dims the UI pixels (time, temps, icons) at night.
-  Your background script already adds: night-background and is-night.
-  We’ll dim on either, so it works regardless.
-*/
-body.night-background .container,
-body.is-night .container {
-  filter: brightness(var(--night-ui-dim));
-}
-
-/* Ensure UI renders above scrim */
-.container {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: flex-start;
-  height: 100vh;
+.app-shell {
   width: 100vw;
-  padding: 0;
-  box-sizing: border-box;
+  height: 100vh;
+  display: grid;
+  place-items: center;
 }
 
-.time-section {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: flex-start;
-  margin-top: 70px;
-  margin-left: 60px;
+.clock-stage {
+  width: 800px;
+  height: 800px;
+  display: grid;
+  place-items: center;
 }
 
-/* Time */
-#time {
-  display: flex;
-  font-size: 210px;
-  font-weight: 400;
-  line-height: 190px;
-  margin-bottom: 0;
-  align-items: center;
-  color: var(--text-primary);
-}
-
-.flip-clock__piece {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 0px;
-}
-
-.flip-clock__card {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.card__top {
-  display: inline-block;
-  transition: transform 0.4s ease-in-out;
-}
-
-.flip-text {
-  transform: rotateX(360deg);
-}
-
-.flip-clock__colon {
-  font-size: 210px;
-  font-weight: 400;
-  line-height: 190px;
-  margin: 0 0px;
-  color: var(--text-primary);
-}
-
-.flip-clock__spacer {
-  font-size: 210px;
-  font-weight: 400;
-  line-height: 190px;
-  margin: 0 0px;
-}
-
-#day {
-  font-size: 110px;
-  font-weight: 400;
-  color: var(--text-primary);
-  margin-top: 10px;
-  white-space: nowrap;
-}
-
-.day-name { margin-right: 0px; }
-.month-name { margin-left: 30px; }
-.date-number { margin-left: 30px; }
-
-/* Weather Section */
-.weather-section {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  justify-content: flex-start;
-  margin-top: 30px;
-  margin-left: auto;
-  margin-right: 50px;
-}
-
-.current-weather {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-top: 0;
-  padding-top: 0;
-}
-
-.current-weather img {
-  height: 240px;
-  width: 240px;
-  align-self: flex-start;
-  margin-top: 0px;
-}
-
-.temp-stack {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  gap: 10px;
-  margin-top: 30px;
-  margin-bottom: 0px;
-  margin-right: 50px;
-}
-
-#current-temp {
-  font-size: 170px;
-  font-weight: 400;
-  margin: 0;
-  padding: 0;
-  line-height: 1;
-  align-self: flex-start;
-  color: var(--text-primary);
-}
-
-#high-low {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 12px;
-}
-
-.hl-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 6px;
-}
-
-.hl-label {
-  font-size: 70px;
-  font-weight: 400;
-  color: var(--text-muted);
-  line-height: 1;
-}
-
-#high, #low {
-  font-size: 75px;
-  font-weight: 400;
-  color: var(--text-muted);
-}
-
-/* Forecast */
-.forecast {
-  display: flex;
-  justify-content: flex-end;
-  gap: 50px;
-  margin-top: -30px;
-  margin-right: 60px;
-  margin-bottom: 30px;
-}
-
-.forecast-day {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
+.clock-face {
   position: relative;
-  padding-top: 0px;
-  text-align: center;
-  font-size: 35px;
-  color: var(--text-secondary);
+  width: 760px;
+  height: 760px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(60, 79, 111, 0.3) 0%, rgba(19, 26, 38, 0.78) 38%, rgba(10, 14, 22, 0.96) 72%, rgba(2, 4, 8, 0.98) 100%);
+  box-shadow:
+    inset 0 0 0 2px var(--face-edge),
+    inset 0 0 120px var(--face-glow),
+    0 20px 50px rgba(0, 0, 0, 0.45);
 }
 
-.forecast-day img {
-  height: 100px;
-  width: 100px;
-  margin: 1px 0;
-}
-
-.forecast-day::after {
+.clock-face::before {
   content: "";
   position: absolute;
-  right: -25px;
-  top: 10%;
-  height: 80%;
-  width: 2px;
-  background-color: #777;
-  opacity: 0.7;
+  inset: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-.forecast-day:last-child::after {
-  display: none;
-}
-
-/* Legacy flip clock layout kept (unused) */
-.flip-clock {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-family: 'Roboto Mono', monospace;
-}
-
-.flip-digit {
-  position: relative;
-  width: 100px;
-  height: 140px;
-  perspective: 800px;
-}
-
-.digit-card {
+.day-label {
   position: absolute;
-  width: 100%;
-  height: 50%;
-  overflow: hidden;
-  background: black;
-  color: var(--text-primary);
-  font-size: 120px;
-  line-height: 140px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  backface-visibility: hidden;
+  top: 146px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  color: rgba(239, 245, 255, 0.72);
+  text-align: center;
+  z-index: 3;
 }
 
-.digit-top {
-  top: 0;
-  border-bottom: 1px solid #333;
+.date-short {
+  position: absolute;
+  top: 178px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(228, 237, 250, 0.58);
+  text-align: center;
+  z-index: 3;
+}
+
+.hour-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
   z-index: 2;
 }
 
-.digit-bottom {
-  bottom: 0;
-  border-top: 1px solid #333;
+.marker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--marker-minor);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
+  z-index: 2;
+  transform: translate(-50%, -50%);
+}
+
+.marker.major {
+  font-size: 48px;
+  font-weight: 500;
+  color: var(--marker-major);
+}
+
+.marker.minor {
+  font-size: 34px;
+  font-weight: 450;
+}
+
+.tick-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.tick {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 16px;
+  margin-left: -1px;
+  margin-top: -8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.38);
+  transform-origin: center center;
   z-index: 1;
 }
 
-.flip-top {
+.tick.major {
+  width: 4px;
+  height: 24px;
+  margin-left: -2px;
+  margin-top: -12px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.tick.quarter {
+  height: 26px;
+  margin-top: -13px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.center-display {
   position: absolute;
-  top: 0;
-  height: 50%;
-  transform-origin: bottom;
-  animation: flipDown 0.6s forwards;
+  left: 50%;
+  top: 472px;
+  width: 300px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
   z-index: 5;
 }
 
-.flip-bottom {
+.weather-icon {
+  object-fit: contain;
+}
+
+.weather-icon-bg {
   position: absolute;
-  bottom: 0;
-  height: 50%;
-  transform-origin: top;
-  transform: rotateX(90deg);
-  animation: flipUp 0.6s forwards;
+  left: 50%;
+  top: 45%;
+  width: 500px;
+  height: 500px;
+  transform: translate(-50%, -50%);
+  opacity: 0.36;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.14));
+  z-index: 2;
+  pointer-events: none;
+}
+
+.current-temp {
+  font-size: 104px;
+  font-weight: 650;
+  line-height: 0.88;
+  letter-spacing: -0.055em;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+}
+
+.high-low {
+  font-size: 30px;
+  font-weight: 540;
+  letter-spacing: 0.06em;
+  color: rgba(241, 247, 255, 0.78);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
+
+.hand {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-origin: 50% calc(100% - 24px);
+  pointer-events: none;
   z-index: 4;
 }
 
-@keyframes flipDown {
-  0% { transform: rotateX(0deg); }
-  100% { transform: rotateX(-90deg); }
+.hour-hand {
+  width: 19px;
+  height: 180px;
+  margin-left: -9.5px;
+  margin-top: -156px;
+  border-radius: 999px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.9), rgba(248, 250, 253, 1));
+  box-shadow: 0 5px 12px rgba(0, 0, 0, 0.26);
+  opacity: 0.98;
+  clip-path: polygon(50% 0%, 79% 14%, 79% 87%, 50% 100%, 21% 87%, 21% 14%);
 }
 
-@keyframes flipUp {
-  0% { transform: rotateX(90deg); }
-  100% { transform: rotateX(0deg); }
+.minute-hand {
+  width: 11px;
+  height: 246px;
+  margin-left: -5.5px;
+  margin-top: -222px;
+  border-radius: 999px;
+  background: linear-gradient(to top, rgba(215, 236, 255, 0.9), rgba(112, 186, 255, 1));
+  box-shadow: 0 5px 13px rgba(0, 0, 0, 0.24);
+  opacity: 0.94;
+  clip-path: polygon(50% 0%, 76% 10%, 76% 89%, 50% 100%, 24% 89%, 24% 10%);
 }
 
-.colon, .ampm {
-  font-size: 100px;
-  padding: 0 10px;
-  color: var(--text-primary);
-  line-height: 140px;
+.center-cap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  margin-top: -13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #dce4ef 0%, #bcc7d6 52%, #6a7587 100%);
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.35));
+  box-shadow:
+    0 2px 7px var(--hub-shadow),
+    inset 0 1px 3px rgba(255, 255, 255, 0.38);
+  z-index: 6;
 }

@@ -32,12 +32,12 @@ A fullscreen clock and weather dashboard designed for Raspberry Pi and the Wisec
 
 ## 🚀 Quick Start
 
-* Download the install script
+* From the checked-out project folder on your Raspberry Pi:
 
 ```
-wget https://raw.githubusercontent.com/Canterrain/weather-display/main/setup.sh
+cd ~/round-weather-display
 ```
-* Install the software: 
+* Run setup:
 ```
 bash setup.sh
 ```
@@ -193,7 +193,7 @@ These testing features are opt-in and do not affect normal operation.
 The setup script automatically configures PM2 to:
 
 ```
-pm2 start scripts/rwc.sh --name weather-display
+pm2 start scripts/rwc.sh --name round-weather-display
 pm2 save
 pm2 startup
 ```

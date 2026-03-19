@@ -2,7 +2,7 @@
 set -euo pipefail
 
 THEME="${1:-}"
-ROOT="$HOME/weather-display"
+ROOT="$HOME/round-weather-display"
 BASE="$ROOT/public/assets"
 THEMES="$BASE/icon-themes"
 ICONS_DIR="$BASE/icons"

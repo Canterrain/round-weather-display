@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="/home/$USER/weather-display"
+APP_DIR="/home/$USER/round-weather-display"
 cd "$APP_DIR" || exit 1
 
 SESSION="${XDG_SESSION_TYPE:-}"

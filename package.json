@@ -1,5 +1,5 @@
 {
-  "name": "weather-display",
+  "name": "round-weather-display",
   "version": "1.0.1",
   "description": "Under-cabinet weather and time display",
   "main": "main.js",
