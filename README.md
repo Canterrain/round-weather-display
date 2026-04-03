@@ -1,19 +1,19 @@
-# Clock Weather Display
+# Round Weather Display
 
-![Clock Weather Display](https://github.com/user-attachments/assets/b909da12-5851-4d60-9017-aa0ce8f040c7)
-
-A fullscreen clock and weather dashboard designed for Raspberry Pi and the Wisecoco 8.8" IPS HDMI display. The UI pulls real-time weather data from Open-Meteo and works great mounted under cabinets or as a minimalist desk display.
+A round analog weather clock designed for Raspberry Pi displays. The UI combines an analog clock face, current weather, a swipeable forecast view, and a local household message system that can be accessed from a phone on the same network.
 
 ## ✨ Features
 
-- Digital clock with configurable 12h or 24h format
+- Analog round clock face with configurable 12h or 24h time
 - Day/date display
 - Real-time weather via Open-Meteo (no API key required)
 - Custom SVG weather icons
-- Auto screen rotation to landscape
-- Optional background images with day/night support
+- Swipeable forecast screen
+- Local message screen with phone-accessible message entry
+- Important/unread message indicator on the main clock face
 - Auto-start with PM2 on boot
-- Clean, modern layout designed for 1920×480 displays
+- Optional shared household messaging between clocks
+- Clean circular UI designed for round displays
 - Works on both X11 (Bookworm) and Wayland/labwc (Trixie)
 
 ## 🖥 Requirements
@@ -23,7 +23,7 @@ A fullscreen clock and weather dashboard designed for Raspberry Pi and the Wisec
 - [Raspberry Pi 5](https://amzn.to/3ZEJUQH) (affiliate)
 - Raspberry Pi 3B may work on Bookworm only (not recommended for Trixie)
 - [Rasperry Pi Power Supply](https://amzn.to/3MvrPBF) (affiliate)
-- [Wisecoco HDMI display](https://amzn.to/4cuofSN) (affiliate)
+- Round HDMI display
 - [Micro HDMI to HDMI adapter](https://amzn.to/3ZyFOJZ) (affiliate)
 - Raspberry Pi OS 64-bit:
   - Bookworm (X11 or Wayland)
@@ -32,17 +32,22 @@ A fullscreen clock and weather dashboard designed for Raspberry Pi and the Wisec
 
 ## 🚀 Quick Start
 
-* From the checked-out project folder on your Raspberry Pi:
+Clone the repo on your Raspberry Pi:
 
-```
+```bash
+git clone https://github.com/Canterrain/round-weather-display.git
 cd ~/round-weather-display
 ```
-* Run setup:
-```
+
+Run setup:
+
+```bash
 bash setup.sh
 ```
-* Reboot Raspberry Pi
-```
+
+Reboot Raspberry Pi:
+
+```bash
 sudo reboot
 ```
 
@@ -50,13 +55,13 @@ sudo reboot
 
 - Installs required system dependencies
 - Installs Node.js 20 LTS
- -Installs and configures the app
+- Installs and configures the app
 - Detects Bookworm vs Trixie automatically
-- Configures screen rotation
 - Configures auto-start:
   - Bookworm (X11): PM2
   - Trixie (Wayland/labwc): labwc autostart
 - Sets up fonts and weather configuration
+- Sets up clock/device identity and message-sharing mode
 - After reboot, the display should launch automatically.
 
 ---
@@ -73,6 +78,9 @@ Example:
   "lon": -xx.xxxx,
   "timezone": "America/New_York",
   "units": "imperial",
+  "deviceId": "kitchen-clock",
+  "roomName": "Kitchen",
+  "messageSharing": "single",
   "timeFormat": "12",
   "leadingZero12h": true
 }
@@ -91,6 +99,12 @@ Example:
   - true → 07:00 AM
   
   - false → 7:00 AM
+
+- "messageSharing"
+
+  - "single" → this clock uses its own local messages
+
+  - "shared" → this clock automatically looks for other shared clocks on the LAN
 
 ### Weather Behavior
 
@@ -112,32 +126,6 @@ Optional tuning values (advanced users):
   If measurable snowfall occurred within this window, the snow icon may persist briefly even if precipitation has just stopped.
 
 These defaults are conservative and do not fabricate weather data — they only interpret recent official Open-Meteo measurements.
-
-## 🖼️ Custom Backgrounds
-
-You can display background images by placing files in the `public/assets/` directory.
-
-### Generic (day-only)
-If only a generic background is present, it will be shown during the day and hidden at night:
-
-- `background.jpg`
-- `background.webp`
-- `background.png`
-
-### Day / Night backgrounds
-You can also provide separate backgrounds for day and night:
-
-- `background-day.jpg`
-- `background-day.webp`
-- `background-day.png`
-- `background-night.jpg`
-- `background-night.webp`
-- `background-night.png`
-
-✅ The first valid file found in each category will be used.  
-Recommended resolution: **1920×480**
-
----
 
 ## 🎨 Weather Icon Customization
 
@@ -162,7 +150,8 @@ To use your own custom icons:
 | `public/index.html`         | Main UI layout                               |
 | `public/style.css`          | Display styles                               |
 | `public/renderer/clock.js`  | Time and date logic                          |
-| `public/renderer/weather.js`| Weather data fetch & rendering               |
+| `public/renderer/weather.js`| Weather, forecast, and swipe navigation      |
+| `public/renderer/messages.js`| Message screen logic and unread state       |
 | `server.js`                 | Express server for frontend                  |
 | `scripts/rwc.sh`            | PM2 launch script                            |
 | `config.json`               | Created by `setup.sh` for user configuration |
@@ -179,12 +168,15 @@ For development and testing, you can access the UI directly in a browser:
 
 http://<pi-ip>:3000/
 
-The following developer-only query parameters are available for testing:
+The local message entry page is available at:
 
-- `?force=day` / `?force=night`  
-  Forces day or night mode without waiting for real sunrise/sunset.
+http://<pi-ip>:3000/messages.html
 
-These testing features are opt-in and do not affect normal operation.
+Current screen flow:
+
+- Main clock screen
+- Swipe left → forecast
+- Swipe right → message screen
 
 ---
 
