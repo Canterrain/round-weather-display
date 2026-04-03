@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # -----------------------------------------------------------------------------
-# Clock Weather Display Setup
+# Round Clock Weather Display Setup
 #
 # Supports:
 #   - Raspberry Pi OS Bookworm (X11 or Wayland)
@@ -17,7 +17,7 @@ set -euo pipefail
 # -----------------------------------------------------------------------------
 
 echo "-------------------------------"
-echo "Clock Weather Display Setup"
+echo "Round Clock Weather Display Setup"
 echo "-------------------------------"
 
 # -----------------------------------------------------------------------------
@@ -48,16 +48,24 @@ fi
 # -----------------------------------------------------------------------------
 SETUP_BRANCH="main"
 REPO_BRANCH="${WEATHER_BRANCH:-$SETUP_BRANCH}"
-REPO_URL="${WEATHER_REPO_URL:-}"
+DEFAULT_REPO_URL="https://github.com/Canterrain/round-weather-display.git"
+REPO_URL="${WEATHER_REPO_URL:-$DEFAULT_REPO_URL}"
 
 # -----------------------------------------------------------------------------
 # Config prompts
 # -----------------------------------------------------------------------------
 read -r -p "Enter your city (e.g., Cincinnati,OH,US): " city
+read -r -p "Enter this clock's room name (e.g., Kitchen): " roomName
 read -r -p "Choose time format (12 or 24): " timeFormat
 read -r -p "Choose temperature units (imperial or metric): " units
+echo "Message sharing:"
+echo "1. Just this clock"
+echo "2. Shared with other clocks"
+read -r -p "Choose 1 or 2 [1]: " messageSharingChoice
 
 leadingZero12h="true"
+roomName="${roomName:-Clock}"
+messageSharingChoice="${messageSharingChoice:-1}"
 
 if [[ "$timeFormat" != "12" && "$timeFormat" != "24" ]]; then
   timeFormat="12"
@@ -65,6 +73,24 @@ fi
 if [[ "$units" != "imperial" && "$units" != "metric" ]]; then
   units="imperial"
 fi
+
+if [[ "$messageSharingChoice" == "2" ]]; then
+  messageSharing="shared"
+else
+  messageSharing="single"
+fi
+
+deviceId="$(
+  printf '%s' "$roomName" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//'
+)"
+
+if [[ -z "$deviceId" ]]; then
+  deviceId="clock"
+fi
+
+deviceId="${deviceId}-clock"
 
 if [[ "$timeFormat" == "12" ]]; then
   read -r -p "Show leading zero in 12-hour mode, 07:00 AM instead of 7:00 AM? (Y/n) [Y]: " lz
@@ -320,6 +346,9 @@ cat <<EOF > "$TARGET_DIR/config.json"
   "lon": $lon,
   "timezone": "$tz",
   "units": "$units",
+  "deviceId": "$deviceId",
+  "roomName": "$roomName",
+  "messageSharing": "$messageSharing",
   "timeFormat": "$timeFormat",
   "leadingZero12h": $leadingZero12h,
   "thundersnowF": 34,

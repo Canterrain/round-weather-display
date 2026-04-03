@@ -21,6 +21,7 @@ build/
 # Local config / secrets
 config*.json
 !config.example.json
+messages.json
 
 # User-provided background overrides
 public/assets/background.jpg

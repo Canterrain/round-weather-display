@@ -6,6 +6,13 @@ const FALLBACK_WEATHER = {
   is_day: true,
   thundersnow: false
 };
+const VIEW_MODES = {
+  CLOCK: 'clock',
+  FORECAST: 'forecast',
+  MESSAGE: 'message'
+};
+
+let currentViewMode = VIEW_MODES.CLOCK;
 
 function renderWeather(current) {
   const icon = document.getElementById('current-icon');
@@ -21,6 +28,129 @@ function renderWeather(current) {
   highLow.textContent = `H:${current.high}°  L:${current.low}°`;
 }
 
+function getForecastDayLabel(offsetFromToday) {
+  const date = new Date();
+  date.setDate(date.getDate() + offsetFromToday);
+  return date.toLocaleDateString('en-US', { weekday: 'short' });
+}
+
+function renderForecast(forecast) {
+  const forecastList = document.getElementById('forecast-list');
+  const tomorrowIcon = document.getElementById('forecast-tomorrow-icon');
+  const tomorrowTemps = document.getElementById('forecast-tomorrow-temps');
+  if (!forecastList || !tomorrowIcon || !tomorrowTemps) return;
+
+  const items = Array.isArray(forecast) && forecast.length > 0
+    ? forecast.slice(0, 5)
+    : Array.from({ length: 5 }, () => FALLBACK_WEATHER);
+
+  const tomorrow = items[0] || FALLBACK_WEATHER;
+  const tomorrowIconKey = mapIconFromMeteo(tomorrow.code, tomorrow.is_day, tomorrow.thundersnow);
+  tomorrowIcon.src = `assets/icons/${tomorrowIconKey}.svg`;
+  tomorrowTemps.textContent = `${tomorrow.high}° / ${tomorrow.low}°`;
+
+  forecastList.replaceChildren();
+
+  items.slice(1, 5).forEach((item, index) => {
+    const row = document.createElement('div');
+    const iconKey = mapIconFromMeteo(item.code, item.is_day, item.thundersnow);
+    row.className = 'forecast-row';
+    row.innerHTML = `
+      <div class="forecast-day">${getForecastDayLabel(index + 2)}</div>
+      <img class="forecast-icon" src="assets/icons/${iconKey}.svg" alt="Forecast icon for ${getForecastDayLabel(index + 2)}"/>
+      <div class="forecast-temps">${item.high}° / ${item.low}°</div>
+    `;
+    forecastList.appendChild(row);
+  });
+}
+
+function setViewMode(mode) {
+  const appShell = document.querySelector('.app-shell');
+  const clockView = document.querySelector('.view-clock');
+  const forecastView = document.querySelector('.view-forecast');
+  const messageView = document.querySelector('.view-message');
+  if (!appShell || !clockView || !forecastView || !messageView) return;
+
+  if (mode === VIEW_MODES.FORECAST) {
+    currentViewMode = VIEW_MODES.FORECAST;
+  } else if (mode === VIEW_MODES.MESSAGE) {
+    currentViewMode = VIEW_MODES.MESSAGE;
+  } else {
+    currentViewMode = VIEW_MODES.CLOCK;
+  }
+
+  appShell.classList.toggle('mode-clock', currentViewMode === VIEW_MODES.CLOCK);
+  appShell.classList.toggle('mode-forecast', currentViewMode === VIEW_MODES.FORECAST);
+  appShell.classList.toggle('mode-message', currentViewMode === VIEW_MODES.MESSAGE);
+  clockView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.CLOCK));
+  forecastView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.FORECAST));
+  messageView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.MESSAGE));
+}
+
+function setupSwipeNavigation() {
+  const stage = document.querySelector('.clock-stage');
+  if (!stage) return;
+
+  let startX = null;
+  let startY = null;
+
+  function begin(x, y) {
+    startX = x;
+    startY = y;
+  }
+
+  function end(x, y) {
+    if (startX == null || startY == null) return;
+
+    const deltaX = x - startX;
+    const deltaY = y - startY;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    if (absX >= 70 && absX > absY * 1.5) {
+      if (currentViewMode === VIEW_MODES.CLOCK) {
+        if (deltaX < 0) setViewMode(VIEW_MODES.FORECAST);
+        if (deltaX > 0) setViewMode(VIEW_MODES.MESSAGE);
+      } else if (currentViewMode === VIEW_MODES.FORECAST && deltaX > 0) {
+        setViewMode(VIEW_MODES.CLOCK);
+      } else if (currentViewMode === VIEW_MODES.MESSAGE && deltaX < 0) {
+        setViewMode(VIEW_MODES.CLOCK);
+      }
+    }
+
+    startX = null;
+    startY = null;
+  }
+
+  stage.addEventListener('touchstart', (event) => {
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    begin(touch.clientX, touch.clientY);
+  }, { passive: true });
+
+  stage.addEventListener('touchend', (event) => {
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+    end(touch.clientX, touch.clientY);
+  }, { passive: true });
+
+  stage.addEventListener('mousedown', (event) => {
+    if (event.button !== 0) return;
+    begin(event.clientX, event.clientY);
+  });
+
+  stage.addEventListener('mouseup', (event) => {
+    if (event.button !== 0) return;
+    end(event.clientX, event.clientY);
+  });
+}
+
+window.appView = {
+  VIEW_MODES,
+  getCurrentViewMode: () => currentViewMode,
+  setViewMode
+};
+
 async function fetchWeather() {
   try {
     const response = await fetch('/weather', { cache: 'no-store' });
@@ -28,13 +158,16 @@ async function fetchWeather() {
 
     if (!response.ok || data.error || !data.current) {
       renderWeather(FALLBACK_WEATHER);
+      renderForecast(null);
       return;
     }
 
     renderWeather(data.current);
+    renderForecast(data.forecast);
   } catch (error) {
     console.error('Weather fetch failed:', error);
     renderWeather(FALLBACK_WEATHER);
+    renderForecast(null);
   }
 }
 
@@ -84,5 +217,8 @@ function mapIconFromMeteo(code, isDay, thundersnow) {
 }
 
 renderWeather(FALLBACK_WEATHER);
+renderForecast(null);
+setupSwipeNavigation();
+setViewMode(currentViewMode);
 fetchWeather();
 setInterval(fetchWeather, 10 * 60 * 1000);

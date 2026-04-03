@@ -7,29 +7,88 @@
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <main class="app-shell">
+  <main class="app-shell mode-clock">
     <section class="clock-stage" aria-label="Analog weather clock">
-      <div class="clock-face">
-        <div id="day" class="day-label">Thursday</div>
-        <div id="date-short" class="date-short">Mar 19</div>
+      <div class="view-layer view-clock" aria-hidden="false">
+        <div class="clock-face">
+          <div id="message-edge-indicator" class="message-edge-indicator" aria-hidden="true"></div>
+          <div id="day" class="day-label">Thursday</div>
+          <div id="date-short" class="date-short">Mar 19</div>
 
-        <div id="tick-ring" class="tick-ring" aria-hidden="true"></div>
-        <div id="hour-ring" class="hour-ring" aria-hidden="true"></div>
-        <img id="current-icon" class="weather-icon weather-icon-bg" src="assets/icons/partlycloudy-day.svg" alt="Weather icon"/>
+          <img id="current-icon" class="weather-icon weather-icon-bg" src="assets/icons/partlycloudy-day.svg" alt="Weather icon"/>
+          <svg id="dial-svg" class="dial-svg dial-face-svg" viewBox="0 0 760 760" aria-hidden="true">
+            <g id="dial-ticks"></g>
+            <g id="dial-numerals"></g>
+          </svg>
+          <svg id="dial-hands-svg" class="dial-svg dial-hands-svg" viewBox="0 0 760 760" aria-hidden="true">
+            <g id="dial-hands">
+              <g id="hour-hand-group">
+                <path id="hour-hand" class="dial-hand hour-hand-svg"></path>
+                <path id="hour-hand-left-facet" class="dial-hand-facet hour-hand-left-facet-svg"></path>
+                <path id="hour-hand-right-facet" class="dial-hand-facet hour-hand-right-facet-svg"></path>
+                <path id="hour-hand-ridge" class="dial-hand-ridge hour-hand-ridge-svg"></path>
+              </g>
+              <g id="minute-hand-group">
+                <path id="minute-hand" class="dial-hand minute-hand-svg"></path>
+                <path id="minute-hand-left-facet" class="dial-hand-facet minute-hand-left-facet-svg"></path>
+                <path id="minute-hand-right-facet" class="dial-hand-facet minute-hand-right-facet-svg"></path>
+                <path id="minute-hand-ridge" class="dial-hand-ridge minute-hand-ridge-svg"></path>
+              </g>
+              <g id="second-hand-group">
+                <path id="second-hand" class="dial-hand second-hand-svg"></path>
+              </g>
+              <g id="center-cap-group">
+                <circle id="center-cap-outer" class="center-cap-outer-svg" cx="380" cy="380" r="15"></circle>
+                <circle id="center-cap-inner" class="center-cap-inner-svg" cx="380" cy="380" r="8"></circle>
+              </g>
+            </g>
+          </svg>
 
-        <div class="center-display">
-          <div id="current-temp" class="current-temp">52°</div>
-          <div id="high-low" class="high-low">H:61°&nbsp;&nbsp;L:48°</div>
+          <div class="center-display">
+            <div id="current-temp" class="current-temp">52°</div>
+            <div id="high-low" class="high-low">H:61°&nbsp;&nbsp;L:48°</div>
+          </div>
         </div>
-
-        <div id="hour-hand" class="hand hour-hand" aria-hidden="true"></div>
-        <div id="minute-hand" class="hand minute-hand" aria-hidden="true"></div>
-        <div class="center-cap" aria-hidden="true"></div>
+      </div>
+      <div class="view-layer view-forecast" aria-hidden="true">
+        <div class="forecast-face">
+          <svg class="forecast-tomorrow-frame" viewBox="0 0 408 408" aria-hidden="true">
+            <defs>
+              <radialGradient id="forecast-tomorrow-disc-gradient" cx="46%" cy="34%" r="72%">
+                <stop offset="0%" stop-color="rgba(98, 141, 214, 0.22)"></stop>
+                <stop offset="52%" stop-color="rgba(53, 78, 126, 0.16)"></stop>
+                <stop offset="100%" stop-color="rgba(14, 22, 39, 0.12)"></stop>
+              </radialGradient>
+            </defs>
+            <circle class="forecast-tomorrow-disc" cx="204" cy="204" r="189"></circle>
+            <circle class="forecast-tomorrow-ring-outer" cx="204" cy="204" r="202.75"></circle>
+            <circle class="forecast-tomorrow-ring-inner" cx="204" cy="204" r="191"></circle>
+          </svg>
+          <div id="forecast-tomorrow" class="forecast-tomorrow">
+            <div class="forecast-tomorrow-label">Tomorrow</div>
+            <img id="forecast-tomorrow-icon" class="forecast-tomorrow-icon" src="assets/icons/partlycloudy-day.svg" alt="Tomorrow forecast icon"/>
+            <div id="forecast-tomorrow-temps" class="forecast-tomorrow-temps">61° / 48°</div>
+          </div>
+          <div id="forecast-list" class="forecast-list forecast-list-secondary">
+          </div>
+        </div>
+      </div>
+      <div class="view-layer view-message" aria-hidden="true">
+        <div class="message-face">
+          <div class="message-title">Message</div>
+          <div id="message-card" class="message-card" hidden>
+            <div id="message-text" class="message-text">Dinner is Ready</div>
+            <div id="message-meta" class="message-meta">-Alex, 5:30 PM</div>
+            <div class="message-dismiss">Tap to dismiss</div>
+          </div>
+          <div id="message-empty" class="message-empty">No messages</div>
+        </div>
       </div>
     </section>
   </main>
 
   <script src="renderer/clock.js"></script>
   <script src="renderer/weather.js"></script>
+  <script src="renderer/messages.js"></script>
 </body>
 </html>

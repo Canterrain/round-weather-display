@@ -5,6 +5,9 @@
   "timezone": "America/New_York",
 
   "units": "imperial",
+  "deviceId": "kitchen-clock",
+  "roomName": "Kitchen",
+  "messageSharing": "single",
 
   "timeFormat": "12",
   "leadingZero12h": true,
