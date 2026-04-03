@@ -18,17 +18,20 @@ A round analog weather clock designed for Raspberry Pi displays. The UI combines
 
 ## 🖥 Requirements
 
+- [Raspberry Pi Zero 2 W](https://amzn.to/4ds03kH) (affiliate)
+The Zero 2 W is preferred for provided cases, but youi can also use:
 - [Raspberry Pi 4](https://amzn.to/40en56s) (affiliate)
 - or
 - [Raspberry Pi 5](https://amzn.to/3ZEJUQH) (affiliate)
 - Raspberry Pi 3B may work on Bookworm only (not recommended for Trixie)
-- [Rasperry Pi Power Supply](https://amzn.to/3MvrPBF) (affiliate)
-- Round HDMI display
-- [Micro HDMI to HDMI adapter](https://amzn.to/3ZyFOJZ) (affiliate)
+- [Raspberry Pi Zero 2 W Power Supply](https://amzn.to/4coiu8G) (affiliate)
+- [Rasperry Pi 4 or 5 Power Supply](https://amzn.to/3MvrPBF) (affiliate)
+- [Round HDMI display](https://amzn.to/41LmZEa) affiliate
+- [Mini HDMI to HDMI for Pi Zero 2 adapter](https://amzn.to/4vbvwh8) (affiliate)
 - Raspberry Pi OS 64-bit:
   - Bookworm (X11 or Wayland)
   - Trixie (Wayland/labwc default)
-- 3D Printed case ([Free STL Here](https://makerworld.com/en/models/2394718-under-cabinet-weather-clock-case#profileId-2623970))
+- 3D Printed case 
 
 ## 🚀 Quick Start
 
