@@ -32,14 +32,13 @@ A round analog weather clock designed for Raspberry Pi displays. The UI combines
 
 ## 🚀 Quick Start
 
-Clone the repo on your Raspberry Pi:
+Download the install script:
 
 ```bash
-git clone https://github.com/Canterrain/round-weather-display.git
-cd ~/round-weather-display
+wget https://raw.githubusercontent.com/Canterrain/round-weather-display/main/setup.sh
 ```
 
-Run setup:
+Install the software:
 
 ```bash
 bash setup.sh
