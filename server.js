@@ -177,10 +177,18 @@ function mergeMessages(baseMessages, incomingMessages) {
 }
 
 function updateKnownDevice(deviceId, roomName) {
-  if (!deviceId) return;
-  messageRuntime.knownDevices.set(deviceId, {
-    deviceId,
-    roomName: roomName || deviceId,
+  const normalizedDeviceId = String(deviceId || '').trim();
+  if (!normalizedDeviceId || normalizedDeviceId === 'all' || normalizedDeviceId === 'default-clock') return;
+
+  const existing = messageRuntime.knownDevices.get(normalizedDeviceId);
+  const nextRoomName = (roomName || '').trim();
+  const resolvedRoomName = nextRoomName
+    || existing?.roomName
+    || normalizedDeviceId;
+
+  messageRuntime.knownDevices.set(normalizedDeviceId, {
+    deviceId: normalizedDeviceId,
+    roomName: resolvedRoomName,
     lastSeenAt: nowIso()
   });
 }
@@ -188,6 +196,7 @@ function updateKnownDevice(deviceId, roomName) {
 function getKnownTargets() {
   const targets = [{ id: 'all', label: 'All clocks' }];
   const devices = Array.from(messageRuntime.knownDevices.values())
+    .filter((device) => device.deviceId !== 'all' && device.deviceId !== 'default-clock')
     .sort((a, b) => a.roomName.localeCompare(b.roomName));
 
   devices.forEach((device) => {
@@ -663,7 +672,9 @@ app.get('/api/messages', async (req, res) => {
   const includeDismissed = req.query.includeDismissed === 'true';
   const store = readMessagesStore();
 
-  updateKnownDevice(deviceId, deviceId === messageRuntime.deviceId ? messageRuntime.roomName : deviceId);
+  if (deviceId !== 'all') {
+    updateKnownDevice(deviceId, deviceId === messageRuntime.deviceId ? messageRuntime.roomName : deviceId);
+  }
 
   const visible = sortMessages(
     deviceId === 'all'

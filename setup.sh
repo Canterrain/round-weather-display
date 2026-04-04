@@ -354,7 +354,12 @@ cat <<EOF > "$TARGET_DIR/config.json"
   "thundersnowF": 34,
   "thundersnowC": 1,
   "recentSnowHours": 2,
-  "recentSnowMm": 0
+  "recentSnowMm": 0,
+  "recentPrecipMinutes": 60,
+  "recentPrecipMm": 0,
+  "recentSnowMm15": 0,
+  "snowTempF": 34,
+  "snowTempC": 1
 }
 EOF
 
