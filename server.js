@@ -415,13 +415,31 @@ function shouldProxyMessages() {
   );
 }
 
+function getRequestKnownDevice(req) {
+  const headerDeviceId = typeof req.headers['x-clock-device-id'] === 'string'
+    ? req.headers['x-clock-device-id'].trim()
+    : '';
+  const headerRoomName = typeof req.headers['x-clock-room-name'] === 'string'
+    ? req.headers['x-clock-room-name'].trim()
+    : '';
+
+  return {
+    deviceId: headerDeviceId,
+    roomName: headerRoomName
+  };
+}
+
 async function proxyMessageRequest(req, res) {
   if (!shouldProxyMessages()) return false;
 
   try {
     const proxied = await fetch(`${messageRuntime.hubUrl}${req.originalUrl}`, {
       method: req.method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-clock-device-id': messageRuntime.deviceId,
+        'x-clock-room-name': messageRuntime.roomName
+      },
       body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body || {})
     });
 
@@ -671,9 +689,13 @@ app.get('/api/messages', async (req, res) => {
   const deviceId = typeof req.query.deviceId === 'string' ? req.query.deviceId : '';
   const includeDismissed = req.query.includeDismissed === 'true';
   const store = readMessagesStore();
+  const knownDevice = getRequestKnownDevice(req);
 
   if (deviceId !== 'all') {
-    updateKnownDevice(deviceId, deviceId === messageRuntime.deviceId ? messageRuntime.roomName : deviceId);
+    const resolvedRoomName = deviceId === messageRuntime.deviceId
+      ? messageRuntime.roomName
+      : (knownDevice.deviceId === deviceId ? knownDevice.roomName : '');
+    updateKnownDevice(deviceId, resolvedRoomName);
   }
 
   const visible = sortMessages(
@@ -725,6 +747,7 @@ app.post('/api/messages/:id/ack', async (req, res) => {
   if (await proxyMessageRequest(req, res)) return;
   const { id } = req.params;
   const deviceId = typeof req.body?.deviceId === 'string' ? req.body.deviceId.trim() : '';
+  const knownDevice = getRequestKnownDevice(req);
 
   if (!deviceId) {
     return res.status(400).json({ error: 'deviceId is required' });
@@ -745,7 +768,10 @@ app.post('/api/messages/:id/ack', async (req, res) => {
     writeMessagesStore(store);
   }
 
-  updateKnownDevice(deviceId, deviceId === messageRuntime.deviceId ? messageRuntime.roomName : deviceId);
+  const resolvedRoomName = deviceId === messageRuntime.deviceId
+    ? messageRuntime.roomName
+    : (knownDevice.deviceId === deviceId ? knownDevice.roomName : '');
+  updateKnownDevice(deviceId, resolvedRoomName);
 
   res.json({ ok: true, id, deviceId });
 });
