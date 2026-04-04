@@ -12,6 +12,7 @@ fi
 
 # Give the session a moment to settle (harmless on both)
 sleep 2
+export PORT="${PORT:-3000}"
 
 # X11-only: hide cursor with unclutter
 if [[ "$IS_WAYLAND" == "false" ]]; then
@@ -29,7 +30,7 @@ node --network-family-autoselection-attempt-timeout=500 server.js &
 
 # Wait for server to be ready (max ~30s)
 for _ in {1..30}; do
-  if curl -fsS http://localhost:3000/weather >/dev/null 2>&1; then
+  if curl -fsS "http://localhost:${PORT}/weather" >/dev/null 2>&1; then
     break
   fi
   sleep 1

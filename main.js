@@ -1,5 +1,6 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
+const PORT = process.env.PORT || '3000';
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -14,7 +15,7 @@ function createWindow() {
     }
   });
 
-  win.loadURL('http://localhost:3000');
+  win.loadURL(`http://localhost:${PORT}`);
 }
 
 app.whenReady().then(() => {

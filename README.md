@@ -53,6 +53,12 @@ Reboot Raspberry Pi:
 sudo reboot
 ```
 
+During Raspberry Pi OS setup, choose a short, simple hostname for the device, such as `Clock`. That makes the local message page easier to remember later at:
+
+```text
+http://clock.local:3000/messages
+```
+
 ## What This Script Does
 
 - Installs required system dependencies
@@ -170,9 +176,9 @@ For development and testing, you can access the UI directly in a browser:
 
 http://<pi-ip>:3000/
 
-The local message entry page is available at:
+For everyday use on your home network, the local message entry page is easiest to reach using the Raspberry Pi hostname you chose during Raspberry Pi OS setup:
 
-http://<pi-ip>:3000/messages.html
+http://<hostname>.local:3000/messages
 
 Current screen flow:
 

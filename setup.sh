@@ -55,7 +55,7 @@ REPO_URL="${WEATHER_REPO_URL:-$DEFAULT_REPO_URL}"
 # Config prompts
 # -----------------------------------------------------------------------------
 read -r -p "Enter your city (e.g., Cincinnati,OH,US): " city
-read -r -p "Enter this clock's room name (e.g., Kitchen): " roomName
+read -r -p "Enter a room label for this clock (e.g., Kitchen, Office, Bedroom): " roomName
 read -r -p "Choose time format (12 or 24): " timeFormat
 read -r -p "Choose temperature units (imperial or metric): " units
 echo "Message sharing:"
@@ -531,6 +531,8 @@ echo " Setup complete!"
 echo "---------------------------------------"
 echo "Installed to: $TARGET_DIR"
 echo "Branch: $REPO_BRANCH"
+echo "Message page:"
+echo "  http://$(hostname).local:3000/messages"
 echo "If you ever re-run setup.sh, your previous config.json backups are in:"
 echo "  ~/${APP_NAME}-backups/"
 echo ""

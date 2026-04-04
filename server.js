@@ -7,7 +7,7 @@ const path = require('path');
 const dgram = require('dgram');
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -635,6 +635,10 @@ app.get('/config', (req, res) => {
     roomName: cfg.roomName || null,
     messageSharing: cfg.messageSharing || 'single'
   });
+});
+
+app.get('/messages', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'messages.html'));
 });
 
 app.get('/api/message-runtime', (req, res) => {
