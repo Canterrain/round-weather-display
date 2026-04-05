@@ -28,17 +28,17 @@ function renderMessageState() {
 
   if (!card || !empty || !text || !meta || !edge || !messageFace) return;
 
+  const active = messageState.activeMessage;
   edge.classList.toggle('has-unread', messageState.unreadCount > 0);
-  edge.classList.toggle('has-important', messageState.messages.some((message) => message.priority === 'important'));
+  edge.classList.toggle('has-important', active?.priority === 'important');
 
-  if (!messageState.activeMessage) {
+  if (!active) {
     card.hidden = true;
     empty.hidden = false;
     messageFace.classList.remove('has-important-message');
     return;
   }
 
-  const active = messageState.activeMessage;
   const timeLabel = formatMessageTime(active.createdAt);
   const metaParts = [];
 
