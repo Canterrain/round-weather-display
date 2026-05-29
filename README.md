@@ -82,19 +82,45 @@ Example:
 ```
 {
   "location": "Cincinnati,OH,US",
-  "lat": xx.xx,
-  "lon": -xx.xxxx,
+  "lat": 39.1031,
+  "lon": -84.5120,
   "timezone": "America/New_York",
   "units": "imperial",
   "deviceId": "kitchen-clock",
   "roomName": "Kitchen",
   "messageSharing": "single",
+  "defaultClockFace": "digital",
   "timeFormat": "12",
-  "leadingZero12h": true
+  "leadingZero12h": true,
+  "thundersnowF": 34,
+  "thundersnowC": 1,
+  "recentSnowHours": 2,
+  "recentSnowMm": 0,
+  "recentPrecipMinutes": 60,
+  "recentPrecipMm": 0,
+  "recentSnowMm15": 0,
+  "snowTempF": 34,
+  "snowTempC": 1
 }
 ```
 
 ### Clock Options
+
+- "deviceId"
+
+  - Unique ID used for message targeting and shared-clock coordination
+  - Example: `"kitchen-clock"`
+
+- "roomName"
+
+  - Human-readable label used in the message system UI
+  - Example: `"Kitchen"`
+
+- "defaultClockFace"
+
+  - `"digital"` → digital home screen on startup
+
+  - `"analog"` → analog home screen on startup
 
 - "timeFormat"
   
@@ -125,13 +151,30 @@ Optional tuning values (advanced users):
   "thundersnowF": 34,
   "thundersnowC": 1,
   "recentSnowHours": 2,
-  "recentSnowMm": 0
+  "recentSnowMm": 0,
+  "recentPrecipMinutes": 60,
+  "recentPrecipMm": 0,
+  "recentSnowMm15": 0,
+  "snowTempF": 34,
+  "snowTempC": 1
 }
 ```
 
-- recentSnowHours
+- recentSnowHours / recentSnowMm
 
   If measurable snowfall occurred within this window, the snow icon may persist briefly even if precipitation has just stopped.
+
+- recentPrecipMinutes / recentPrecipMm / recentSnowMm15
+
+  These values tune how recent minutely precipitation is interpreted when choosing between rain and snow-style icons.
+
+- snowTempF / snowTempC
+
+  These set the temperature threshold used when recent precipitation needs to be interpreted as rain versus snow.
+
+- thundersnowF / thundersnowC
+
+  These set the temperature threshold for preferring a thundersnow icon instead of a standard thunderstorm icon.
 
 These defaults are conservative and do not fabricate weather data — they only interpret recent official Open-Meteo measurements.
 
@@ -182,9 +225,15 @@ http://<hostname>.local:3000/messages
 
 Current screen flow:
 
-- Main clock screen
-- Swipe left → forecast
-- Swipe right → message screen
+- Analog home screen
+  - Swipe left → forecast
+  - Swipe right → message screen
+  - Swipe down → digital home screen
+- Digital home screen
+  - Swipe right → message screen
+  - Swipe up → analog home screen
+
+The default home screen is configurable with `"defaultClockFace"` in `config.json`.
 
 ---
 
