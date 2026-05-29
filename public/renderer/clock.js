@@ -1,6 +1,10 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const DIAL_CENTER = 380;
 const SECOND_HAND_ENABLED = true;
+const clockConfig = {
+  timeFormat: '12',
+  leadingZero12h: true
+};
 
 function polarPoint(angleDeg, radius) {
   const angleRad = (angleDeg - 90) * (Math.PI / 180);
@@ -146,24 +150,90 @@ function updateHands() {
   if (secondHand && SECOND_HAND_ENABLED) secondHand.setAttribute('transform', `rotate(${secondAngle} 380 380)`);
 }
 
-function updateDayLabel() {
+function formatDigitalTime(now) {
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+
+  if (clockConfig.timeFormat === '24') {
+    return {
+      time: `${String(now.getHours()).padStart(2, '0')}:${minutes}`,
+      meridiem: ''
+    };
+  }
+
+  const meridiem = now.getHours() >= 12 ? 'PM' : 'AM';
+  let displayHour = now.getHours() % 12;
+  if (displayHour === 0) displayHour = 12;
+  const hourLabel = clockConfig.leadingZero12h
+    ? String(displayHour).padStart(2, '0')
+    : String(displayHour);
+
+  return {
+    time: `${hourLabel}:${minutes}`,
+    meridiem
+  };
+}
+
+function updateCalendarLabels() {
   const now = new Date();
   const day = now.toLocaleDateString('en-US', { weekday: 'long' });
   const dateShort = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const dayEl = document.getElementById('day');
   const dateEl = document.getElementById('date-short');
+  const digitalDayEl = document.getElementById('digital-day');
+  const digitalDateEl = document.getElementById('digital-date');
 
   if (dayEl) dayEl.textContent = day;
   if (dateEl) dateEl.textContent = dateShort;
+  if (digitalDayEl) digitalDayEl.textContent = day.toUpperCase();
+  if (digitalDateEl) digitalDateEl.textContent = dateShort.toUpperCase();
+}
+
+function updateDigitalTime() {
+  const digitalTimeEl = document.getElementById('digital-time');
+  const digitalMeridiemEl = document.getElementById('digital-meridiem');
+  if (!digitalTimeEl || !digitalMeridiemEl) return;
+
+  const { time, meridiem } = formatDigitalTime(new Date());
+  digitalTimeEl.textContent = time;
+  digitalMeridiemEl.textContent = meridiem;
+  digitalMeridiemEl.style.display = meridiem ? '' : 'none';
+}
+
+async function fetchClockConfig() {
+  try {
+    const response = await fetch('/config', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok || data.error) return;
+
+    if (data.timeFormat === '24') {
+      clockConfig.timeFormat = '24';
+    } else {
+      clockConfig.timeFormat = '12';
+    }
+
+    if (typeof data.leadingZero12h === 'boolean') {
+      clockConfig.leadingZero12h = data.leadingZero12h;
+    }
+  } catch (error) {
+    console.error('Failed to load clock config:', error);
+  }
 }
 
 function startClock() {
   buildDialSvg();
-  updateDayLabel();
+  updateCalendarLabels();
   updateHands();
+  updateDigitalTime();
+  fetchClockConfig().then(() => {
+    updateCalendarLabels();
+    updateDigitalTime();
+  });
 
-  setInterval(updateHands, 1000);
-  setInterval(updateDayLabel, 60 * 60 * 1000);
+  setInterval(() => {
+    updateHands();
+    updateDigitalTime();
+  }, 1000);
+  setInterval(updateCalendarLabels, 60 * 60 * 1000);
 }
 
 startClock();

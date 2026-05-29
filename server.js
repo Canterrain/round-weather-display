@@ -660,7 +660,8 @@ app.get('/config', (req, res) => {
     units: cfg.units || null,
     deviceId: cfg.deviceId || null,
     roomName: cfg.roomName || null,
-    messageSharing: cfg.messageSharing || 'single'
+    messageSharing: cfg.messageSharing || 'single',
+    defaultClockFace: cfg.defaultClockFace === 'analog' ? 'analog' : 'digital'
   });
 });
 

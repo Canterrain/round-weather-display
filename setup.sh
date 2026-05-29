@@ -58,6 +58,10 @@ read -r -p "Enter your city (e.g., Cincinnati,OH,US): " city
 read -r -p "Enter a room label for this clock (e.g., Kitchen, Office, Bedroom): " roomName
 read -r -p "Choose time format (12 or 24): " timeFormat
 read -r -p "Choose temperature units (imperial or metric): " units
+echo "Default clock face:"
+echo "1. Analog"
+echo "2. Digital"
+read -r -p "Choose 1 or 2 [2]: " defaultClockFaceChoice
 echo "Message sharing:"
 echo "1. Just this clock"
 echo "2. Shared with other clocks"
@@ -65,6 +69,7 @@ read -r -p "Choose 1 or 2 [1]: " messageSharingChoice
 
 leadingZero12h="true"
 roomName="${roomName:-Clock}"
+defaultClockFaceChoice="${defaultClockFaceChoice:-2}"
 messageSharingChoice="${messageSharingChoice:-1}"
 
 if [[ "$timeFormat" != "12" && "$timeFormat" != "24" ]]; then
@@ -78,6 +83,12 @@ if [[ "$messageSharingChoice" == "2" ]]; then
   messageSharing="shared"
 else
   messageSharing="single"
+fi
+
+if [[ "$defaultClockFaceChoice" == "2" ]]; then
+  defaultClockFace="digital"
+else
+  defaultClockFace="analog"
 fi
 
 deviceId="$(
@@ -349,6 +360,7 @@ cat <<EOF > "$TARGET_DIR/config.json"
   "deviceId": "$deviceId",
   "roomName": "$roomName",
   "messageSharing": "$messageSharing",
+  "defaultClockFace": "$defaultClockFace",
   "timeFormat": "$timeFormat",
   "leadingZero12h": $leadingZero12h,
   "thundersnowF": 34,

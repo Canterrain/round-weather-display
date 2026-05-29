@@ -8,6 +8,7 @@
   "deviceId": "kitchen-clock",
   "roomName": "Kitchen",
   "messageSharing": "single",
+  "defaultClockFace": "digital",
 
   "timeFormat": "12",
   "leadingZero12h": true,

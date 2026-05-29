@@ -7,11 +7,11 @@
   <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <main class="app-shell mode-clock">
+  <main class="app-shell">
     <section class="clock-stage" aria-label="Analog weather clock">
       <div class="view-layer view-clock" aria-hidden="false">
         <div class="clock-face">
-          <div id="message-edge-indicator" class="message-edge-indicator" aria-hidden="true"></div>
+          <div class="message-edge-indicator" data-message-edge-indicator aria-hidden="true"></div>
           <div id="day" class="day-label">Thursday</div>
           <div id="date-short" class="date-short">Mar 19</div>
 
@@ -48,6 +48,28 @@
             <div id="current-temp" class="current-temp">52°</div>
             <div id="high-low" class="high-low">H:61°&nbsp;&nbsp;L:48°</div>
           </div>
+        </div>
+      </div>
+      <div class="view-layer view-digital" aria-hidden="true">
+        <div class="digital-face">
+          <div class="message-edge-indicator" data-message-edge-indicator aria-hidden="true"></div>
+          <div id="digital-day" class="digital-day">WEDNESDAY</div>
+          <div id="digital-date" class="digital-date">APR 1</div>
+          <div class="digital-time-block">
+            <div id="digital-time" class="digital-time">10:42</div>
+            <div id="digital-meridiem" class="digital-meridiem">AM</div>
+          </div>
+          <div class="digital-divider digital-divider-top"></div>
+          <div class="digital-current">
+            <div id="digital-current-temp" class="digital-current-temp">56°</div>
+            <img id="digital-current-icon" class="digital-current-icon" src="assets/icons/partlycloudy-day.svg" alt="Current weather icon"/>
+            <div class="digital-current-copy">
+              <div id="digital-current-summary" class="digital-current-summary">Partly Cloudy</div>
+              <div id="digital-current-high-low" class="digital-current-high-low">H:80°&nbsp;&nbsp;L:52°</div>
+            </div>
+          </div>
+          <div class="digital-divider digital-divider-bottom"></div>
+          <div id="digital-forecast-list" class="digital-forecast-list"></div>
         </div>
       </div>
       <div class="view-layer view-forecast" aria-hidden="true">

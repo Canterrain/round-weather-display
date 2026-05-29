@@ -23,14 +23,16 @@ function renderMessageState() {
   const empty = document.getElementById('message-empty');
   const text = document.getElementById('message-text');
   const meta = document.getElementById('message-meta');
-  const edge = document.getElementById('message-edge-indicator');
+  const edges = document.querySelectorAll('[data-message-edge-indicator]');
   const messageFace = document.querySelector('.message-face');
 
-  if (!card || !empty || !text || !meta || !edge || !messageFace) return;
+  if (!card || !empty || !text || !meta || !edges.length || !messageFace) return;
 
   const active = messageState.activeMessage;
-  edge.classList.toggle('has-unread', messageState.unreadCount > 0);
-  edge.classList.toggle('has-important', active?.priority === 'important');
+  edges.forEach((edge) => {
+    edge.classList.toggle('has-unread', messageState.unreadCount > 0);
+    edge.classList.toggle('has-important', active?.priority === 'important');
+  });
 
   if (!active) {
     card.hidden = true;
@@ -115,7 +117,9 @@ async function acknowledgeActiveMessage() {
     }
 
     await fetchMessages();
-    if (window.appView?.setViewMode) {
+    if (window.appView?.returnToLastHome) {
+      window.appView.returnToLastHome();
+    } else if (window.appView?.setViewMode) {
       window.appView.setViewMode(window.appView.VIEW_MODES.CLOCK);
     }
   } catch (error) {

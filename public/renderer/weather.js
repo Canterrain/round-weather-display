@@ -8,11 +8,18 @@ const FALLBACK_WEATHER = {
 };
 const VIEW_MODES = {
   CLOCK: 'clock',
+  DIGITAL: 'digital',
   FORECAST: 'forecast',
   MESSAGE: 'message'
 };
 
 let currentViewMode = VIEW_MODES.CLOCK;
+let defaultHomeViewMode = VIEW_MODES.DIGITAL;
+let lastHomeViewMode = VIEW_MODES.DIGITAL;
+
+function getHomeFallbackForecastItems() {
+  return Array.from({ length: 5 }, () => FALLBACK_WEATHER);
+}
 
 function renderWeather(current) {
   const icon = document.getElementById('current-icon');
@@ -26,6 +33,40 @@ function renderWeather(current) {
   icon.src = `assets/icons/${iconKey}.svg`;
   temp.textContent = `${current.temp}°`;
   highLow.textContent = `H:${current.high}°  L:${current.low}°`;
+}
+
+function renderDigitalWeather(current, forecast) {
+  const tempEl = document.getElementById('digital-current-temp');
+  const iconEl = document.getElementById('digital-current-icon');
+  const summaryEl = document.getElementById('digital-current-summary');
+  const highLowEl = document.getElementById('digital-current-high-low');
+  const forecastList = document.getElementById('digital-forecast-list');
+  if (!tempEl || !iconEl || !summaryEl || !highLowEl || !forecastList) return;
+
+  const safeCurrent = current || FALLBACK_WEATHER;
+  const items = Array.isArray(forecast) && forecast.length > 0
+    ? forecast.slice(0, 5)
+    : getHomeFallbackForecastItems();
+
+  const currentIconKey = mapIconFromMeteo(safeCurrent.code, safeCurrent.is_day, safeCurrent.thundersnow);
+  tempEl.textContent = `${safeCurrent.temp}°`;
+  iconEl.src = `assets/icons/${currentIconKey}.svg`;
+  summaryEl.textContent = describeMeteo(safeCurrent.code, safeCurrent.is_day, safeCurrent.thundersnow);
+  highLowEl.textContent = `H:${safeCurrent.high}°  L:${safeCurrent.low}°`;
+
+  forecastList.replaceChildren();
+
+  items.forEach((item, index) => {
+    const iconKey = mapIconFromMeteo(item.code, item.is_day, item.thundersnow);
+    const card = document.createElement('div');
+    card.className = 'digital-forecast-item';
+    card.innerHTML = `
+      <div class="digital-forecast-day">${getForecastDayLabel(index + 1).toUpperCase()}</div>
+      <img class="digital-forecast-icon" src="assets/icons/${iconKey}.svg" alt="Forecast icon for ${getForecastDayLabel(index + 1)}"/>
+      <div class="digital-forecast-temp">${item.high}°</div>
+    `;
+    forecastList.appendChild(card);
+  });
 }
 
 function getForecastDayLabel(offsetFromToday) {
@@ -67,22 +108,31 @@ function renderForecast(forecast) {
 function setViewMode(mode) {
   const appShell = document.querySelector('.app-shell');
   const clockView = document.querySelector('.view-clock');
+  const digitalView = document.querySelector('.view-digital');
   const forecastView = document.querySelector('.view-forecast');
   const messageView = document.querySelector('.view-message');
-  if (!appShell || !clockView || !forecastView || !messageView) return;
+  if (!appShell || !clockView || !digitalView || !forecastView || !messageView) return;
 
   if (mode === VIEW_MODES.FORECAST) {
     currentViewMode = VIEW_MODES.FORECAST;
+  } else if (mode === VIEW_MODES.DIGITAL) {
+    currentViewMode = VIEW_MODES.DIGITAL;
   } else if (mode === VIEW_MODES.MESSAGE) {
     currentViewMode = VIEW_MODES.MESSAGE;
   } else {
     currentViewMode = VIEW_MODES.CLOCK;
   }
 
+  if (currentViewMode === VIEW_MODES.CLOCK || currentViewMode === VIEW_MODES.DIGITAL) {
+    lastHomeViewMode = currentViewMode;
+  }
+
   appShell.classList.toggle('mode-clock', currentViewMode === VIEW_MODES.CLOCK);
+  appShell.classList.toggle('mode-digital', currentViewMode === VIEW_MODES.DIGITAL);
   appShell.classList.toggle('mode-forecast', currentViewMode === VIEW_MODES.FORECAST);
   appShell.classList.toggle('mode-message', currentViewMode === VIEW_MODES.MESSAGE);
   clockView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.CLOCK));
+  digitalView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.DIGITAL));
   forecastView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.FORECAST));
   messageView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.MESSAGE));
 }
@@ -110,10 +160,24 @@ function setupSwipeNavigation() {
     if (absX >= 70 && absX > absY * 1.5) {
       if (currentViewMode === VIEW_MODES.CLOCK) {
         if (deltaX < 0) setViewMode(VIEW_MODES.FORECAST);
-        if (deltaX > 0) setViewMode(VIEW_MODES.MESSAGE);
+        if (deltaX > 0) {
+          lastHomeViewMode = currentViewMode;
+          setViewMode(VIEW_MODES.MESSAGE);
+        }
+      } else if (currentViewMode === VIEW_MODES.DIGITAL) {
+        if (deltaX > 0) {
+          lastHomeViewMode = currentViewMode;
+          setViewMode(VIEW_MODES.MESSAGE);
+        }
       } else if (currentViewMode === VIEW_MODES.FORECAST && deltaX > 0) {
         setViewMode(VIEW_MODES.CLOCK);
       } else if (currentViewMode === VIEW_MODES.MESSAGE && deltaX < 0) {
+        setViewMode(lastHomeViewMode);
+      }
+    } else if (absY >= 70 && absY > absX * 1.5) {
+      if (currentViewMode === VIEW_MODES.CLOCK && deltaY > 0) {
+        setViewMode(VIEW_MODES.DIGITAL);
+      } else if (currentViewMode === VIEW_MODES.DIGITAL && deltaY < 0) {
         setViewMode(VIEW_MODES.CLOCK);
       }
     }
@@ -145,9 +209,26 @@ function setupSwipeNavigation() {
   });
 }
 
+async function fetchAppConfig() {
+  try {
+    const response = await fetch('/config', { cache: 'no-store' });
+    const data = await response.json();
+    if (!response.ok || data.error) return;
+
+    defaultHomeViewMode = data.defaultClockFace === 'analog'
+      ? VIEW_MODES.CLOCK
+      : VIEW_MODES.DIGITAL;
+    lastHomeViewMode = defaultHomeViewMode;
+  } catch (error) {
+    console.error('Failed to load app config:', error);
+  }
+}
+
 window.appView = {
   VIEW_MODES,
   getCurrentViewMode: () => currentViewMode,
+  getLastHomeViewMode: () => lastHomeViewMode,
+  returnToLastHome: () => setViewMode(lastHomeViewMode),
   setViewMode
 };
 
@@ -159,16 +240,36 @@ async function fetchWeather() {
     if (!response.ok || data.error || !data.current) {
       renderWeather(FALLBACK_WEATHER);
       renderForecast(null);
+      renderDigitalWeather(FALLBACK_WEATHER, null);
       return;
     }
 
     renderWeather(data.current);
     renderForecast(data.forecast);
+    renderDigitalWeather(data.current, data.forecast);
   } catch (error) {
     console.error('Weather fetch failed:', error);
     renderWeather(FALLBACK_WEATHER);
     renderForecast(null);
+    renderDigitalWeather(FALLBACK_WEATHER, null);
   }
+}
+
+function describeMeteo(code, isDay, thundersnow) {
+  if (thundersnow) return 'Thundersnow';
+  if (code === 0) return 'Clear';
+  if (code === 1) return isDay ? 'Mostly Sunny' : 'Mostly Clear';
+  if (code === 2) return isDay ? 'Partly Cloudy' : 'Partly Cloudy';
+  if (code === 3) return 'Cloudy';
+  if (code === 45 || code === 48) return 'Foggy';
+  if (code >= 51 && code <= 57) return 'Drizzle';
+  if (code >= 61 && code <= 65) return 'Rain';
+  if (code === 66 || code === 67) return 'Sleet';
+  if (code >= 71 && code <= 77) return 'Snow';
+  if (code >= 80 && code <= 82) return 'Showers';
+  if (code === 85 || code === 86) return 'Snow Showers';
+  if (code === 95 || code === 96 || code === 99) return 'Thunderstorm';
+  return 'Cloudy';
 }
 
 // Map Open-Meteo weathercode (+ is_day) to your icon filenames.
@@ -216,9 +317,15 @@ function mapIconFromMeteo(code, isDay, thundersnow) {
   return "cloudy";
 }
 
-renderWeather(FALLBACK_WEATHER);
-renderForecast(null);
-setupSwipeNavigation();
-setViewMode(currentViewMode);
-fetchWeather();
-setInterval(fetchWeather, 10 * 60 * 1000);
+async function initializeWeatherUi() {
+  renderWeather(FALLBACK_WEATHER);
+  renderForecast(null);
+  renderDigitalWeather(FALLBACK_WEATHER, null);
+  setupSwipeNavigation();
+  await fetchAppConfig();
+  setViewMode(defaultHomeViewMode);
+  fetchWeather();
+  setInterval(fetchWeather, 10 * 60 * 1000);
+}
+
+initializeWeatherUi();

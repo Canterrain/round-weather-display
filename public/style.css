@@ -69,6 +69,7 @@ body {
 }
 
 .mode-clock .view-clock,
+.mode-digital .view-digital,
 .mode-forecast .view-forecast,
 .mode-message .view-message {
   opacity: 1;
@@ -102,6 +103,19 @@ body {
     0 20px 50px rgba(0, 0, 0, 0.45);
 }
 
+.digital-face {
+  position: relative;
+  width: 760px;
+  height: 760px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(37, 74, 134, 0.28) 0%, rgba(20, 39, 72, 0.4) 24%, rgba(10, 20, 35, 0.86) 60%, rgba(4, 10, 18, 0.98) 100%);
+  box-shadow:
+    inset 0 0 0 2px var(--face-edge),
+    inset 0 0 120px var(--face-glow),
+    0 20px 50px rgba(0, 0, 0, 0.45);
+}
+
 .message-face {
   position: relative;
   width: 760px;
@@ -121,6 +135,26 @@ body {
   inset: 18px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.digital-face::before {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.digital-face::after {
+  content: "";
+  position: absolute;
+  inset: 32px;
+  border-radius: 50%;
+  border: 2px solid rgba(89, 190, 255, 0.36);
+  box-shadow:
+    0 0 18px rgba(49, 146, 230, 0.16),
+    inset 0 0 18px rgba(49, 146, 230, 0.08);
+  opacity: 0.88;
 }
 
 .message-face::before {
@@ -255,6 +289,185 @@ body {
   color: rgba(228, 237, 250, 0.58);
   text-align: center;
   z-index: 5;
+}
+
+.digital-day,
+.digital-date,
+.digital-time-block,
+.digital-current,
+.digital-divider,
+.digital-forecast-list {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+.digital-day {
+  top: 80px;
+  font-size: 32px;
+  font-weight: 560;
+  letter-spacing: 0.045em;
+  color: rgba(152, 221, 255, 0.94);
+  text-align: center;
+}
+
+.digital-date {
+  top: 115px;
+  font-size: 25px;
+  font-weight: 540;
+  letter-spacing: 0.08em;
+  color: rgba(188, 228, 255, 0.8);
+  text-align: center;
+}
+
+.digital-time-block {
+  top: 150px;
+  width: 620px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.digital-time {
+  font-size: 164px;
+  font-weight: 430;
+  line-height: 0.88;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: rgba(250, 252, 255, 0.98);
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.digital-meridiem {
+  margin-top: 0;
+  margin-bottom: 18px;
+  font-size: 30px;
+  font-weight: 540;
+  letter-spacing: 0.08em;
+  color: rgba(127, 211, 255, 0.94);
+}
+
+.digital-divider {
+  width: 500px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(130, 203, 255, 0.26) 8%,
+    rgba(130, 203, 255, 0.5) 50%,
+    rgba(130, 203, 255, 0.26) 92%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px rgba(48, 142, 230, 0.12);
+}
+
+.digital-divider-top {
+  top: 300px;
+}
+
+.digital-divider-bottom {
+  top: 486px;
+}
+
+.digital-current {
+  top: 320px;
+  width: 600px;
+  height: 150px;
+}
+
+.digital-current-temp {
+  position: absolute;
+  left: 25px;
+  top: 50%;
+  width: 200px;
+  transform: translateY(-50%);
+  font-size: 110px;
+  font-weight: 560;
+  line-height: 0.94;
+  letter-spacing: -0.05em;
+  color: rgba(246, 250, 255, 0.98);
+  text-align: left;
+}
+
+.digital-current-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 200px;
+  height: 200px;
+  transform: translate(-50%, -50%);
+  object-fit: contain;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.22));
+}
+
+.digital-current-copy {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 250px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+	left: 400px;
+}
+
+.digital-current-summary {
+  font-size: 35px;
+  font-weight: 560;
+  letter-spacing: 0.01em;
+  color: rgba(238, 245, 255, 0.94);
+}
+
+.digital-current-high-low {
+  font-size: 25px;
+  font-weight: 520;
+  letter-spacing: 0.05em;
+  color: rgba(147, 209, 255, 0.88);
+}
+
+.digital-forecast-list {
+  top: 500px;
+  width: 478px;
+  display: flex;
+  justify-content: center;
+  gap: 0px;
+  align-items: flex-start;
+}
+
+.digital-forecast-item {
+  width: 94px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0px;
+  text-align: center;
+}
+
+.digital-forecast-day {
+  font-size: 25px;
+  font-weight: 560;
+  letter-spacing: 0.07em;
+  color: rgba(164, 222, 255, 0.94);
+}
+
+.digital-forecast-icon {
+  width: 75px;
+  height: 75px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.2));
+}
+
+.digital-forecast-temp {
+  font-size: 28px;
+  font-weight: 530;
+  letter-spacing: 0.02em;
+  color: rgba(236, 244, 255, 0.88);
 }
 
 .forecast-tomorrow-frame {
