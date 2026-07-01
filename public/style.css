@@ -301,10 +301,10 @@ body {
 
 .day-label {
   position: absolute;
-  top: 146px;
+  top: 130px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 26px;
+  font-size: 40px;
   font-weight: 500;
   letter-spacing: 0.03em;
   color: rgba(239, 245, 255, 0.72);
@@ -317,7 +317,7 @@ body {
   top: 178px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 22px;
+  font-size: 30px;
   font-weight: 500;
   letter-spacing: 0.02em;
   color: rgba(228, 237, 250, 0.58);
@@ -738,7 +738,7 @@ body {
   font-size: 104px;
   font-weight: 650;
   line-height: 0.88;
-  letter-spacing: -0.055em;
+  letter-spacing: -0.02em;
   text-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
 }
 
