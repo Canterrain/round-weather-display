@@ -17,6 +17,7 @@ body {
   --face-glow: rgba(103, 139, 255, 0.08);
   --text-primary: #f8fbff;
   --text-secondary: rgba(235, 242, 255, 0.72);
+  --status-text: rgba(220, 230, 244, 0.66);
   --tick-major: rgba(255, 255, 255, 0.92);
   --tick-minor: rgba(255, 255, 255, 0.5);
   --marker-major: rgba(244, 248, 255, 0.88);
@@ -24,6 +25,9 @@ body {
   --hour-hand: #f4f6fb;
   --minute-hand: #b8ddff;
   --hub-shadow: rgba(0, 0, 0, 0.45);
+  --night-shift-face-edge: rgba(179, 94, 94, 0.18);
+  --night-shift-face-glow: rgba(110, 28, 28, 0.12);
+  --night-shift-status: rgba(203, 120, 120, 0.82);
 }
 
 body {
@@ -52,6 +56,36 @@ body {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.status-stack {
+  position: absolute;
+  left: 50%;
+  bottom: 56px;
+  width: 360px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.mode-message .status-stack {
+  opacity: 0;
+}
+
+.status-line-round {
+  min-height: 18px;
+  max-width: 100%;
+  font-size: 17px;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--status-text);
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
 }
 
 .view-layer {
@@ -848,4 +882,162 @@ body {
 
 .forecast-row:nth-child(-n+3) .forecast-temps {
   transform: translate(4px, -4px);
+}
+
+body.night-shift-red {
+  background:
+    radial-gradient(circle at center, rgba(36, 10, 10, 0.72) 0%, rgba(10, 4, 4, 0.98) 58%, #010101 100%);
+}
+
+body.night-shift-red .clock-face,
+body.night-shift-red .forecast-face,
+body.night-shift-red .message-face {
+  background:
+    radial-gradient(circle at 50% 46%, rgba(82, 30, 30, 0.18) 0%, rgba(27, 11, 11, 0.78) 38%, rgba(11, 6, 6, 0.96) 72%, rgba(3, 1, 1, 0.99) 100%);
+  box-shadow:
+    inset 0 0 0 2px var(--night-shift-face-edge),
+    inset 0 0 96px var(--night-shift-face-glow),
+    0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+body.night-shift-red .digital-face {
+  background:
+    radial-gradient(circle at 50% 34%, rgba(86, 34, 34, 0.18) 0%, rgba(38, 18, 18, 0.28) 24%, rgba(15, 8, 8, 0.9) 60%, rgba(5, 3, 3, 0.99) 100%);
+  box-shadow:
+    inset 0 0 0 2px var(--night-shift-face-edge),
+    inset 0 0 96px var(--night-shift-face-glow),
+    0 20px 50px rgba(0, 0, 0, 0.5);
+}
+
+body.night-shift-red .digital-face::after {
+  border-color: rgba(165, 86, 86, 0.22);
+  box-shadow:
+    0 0 14px rgba(140, 52, 52, 0.12),
+    inset 0 0 14px rgba(140, 52, 52, 0.08);
+}
+
+body.night-shift-red .day-label,
+body.night-shift-red .digital-day,
+body.night-shift-red .digital-time,
+body.night-shift-red .current-temp,
+body.night-shift-red .digital-current-temp,
+body.night-shift-red .digital-current-summary,
+body.night-shift-red .forecast-tomorrow-label,
+body.night-shift-red .forecast-tomorrow-temps,
+body.night-shift-red .forecast-day,
+body.night-shift-red .message-title,
+body.night-shift-red .message-text {
+  color: rgba(236, 192, 192, 0.9);
+}
+
+body.night-shift-red .date-short,
+body.night-shift-red .digital-date,
+body.night-shift-red .digital-meridiem,
+body.night-shift-red .high-low,
+body.night-shift-red .digital-current-high-low,
+body.night-shift-red .digital-forecast-day,
+body.night-shift-red .digital-forecast-temp,
+body.night-shift-red .forecast-temps,
+body.night-shift-red .message-meta,
+body.night-shift-red .message-dismiss,
+body.night-shift-red .message-empty,
+body.night-shift-red .status-line-round {
+  color: rgba(193, 122, 122, 0.82);
+}
+
+body.night-shift-red .digital-divider {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(176, 96, 96, 0.18) 8%,
+    rgba(176, 96, 96, 0.34) 50%,
+    rgba(176, 96, 96, 0.18) 92%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px rgba(122, 42, 42, 0.12);
+}
+
+body.night-shift-red .dial-tick.minor {
+  stroke: rgba(193, 126, 126, 0.32);
+}
+
+body.night-shift-red .dial-tick.major {
+  stroke: rgba(214, 160, 160, 0.56);
+}
+
+body.night-shift-red .dial-tick.quarter {
+  stroke: rgba(224, 172, 172, 0.64);
+}
+
+body.night-shift-red .dial-numeral.major {
+  fill: rgba(225, 182, 182, 0.82);
+}
+
+body.night-shift-red .dial-numeral.minor {
+  fill: rgba(198, 150, 150, 0.68);
+}
+
+body.night-shift-red .hour-hand-svg {
+  fill: rgba(184, 145, 145, 0.88);
+}
+
+body.night-shift-red .hour-hand-left-facet-svg {
+  fill: rgba(88, 54, 54, 0.96);
+}
+
+body.night-shift-red .hour-hand-right-facet-svg {
+  fill: rgba(213, 180, 180, 0.88);
+}
+
+body.night-shift-red .hour-hand-ridge-svg {
+  fill: rgba(240, 214, 214, 0.58);
+}
+
+body.night-shift-red .minute-hand-svg {
+  fill: rgba(161, 118, 118, 0.88);
+}
+
+body.night-shift-red .minute-hand-left-facet-svg {
+  fill: rgba(98, 68, 68, 0.94);
+}
+
+body.night-shift-red .minute-hand-right-facet-svg {
+  fill: rgba(193, 162, 162, 0.82);
+}
+
+body.night-shift-red .minute-hand-ridge-svg {
+  fill: rgba(224, 195, 195, 0.48);
+}
+
+body.night-shift-red .second-hand-svg {
+  fill: rgba(187, 132, 132, 0.42);
+}
+
+body.night-shift-red .center-cap-outer-svg {
+  stroke: rgba(208, 166, 166, 0.2);
+}
+
+body.night-shift-red .center-cap-inner-svg {
+  fill: rgba(214, 184, 184, 0.78);
+  stroke: rgba(92, 63, 63, 0.3);
+}
+
+body.night-shift-red .forecast-tomorrow-ring-outer {
+  stroke: rgba(186, 122, 122, 0.22);
+}
+
+body.night-shift-red .forecast-tomorrow-ring-inner {
+  stroke: rgba(163, 100, 100, 0.2);
+}
+
+body.night-shift-red .weather-icon-bg {
+  opacity: 0.22;
+  filter: brightness(0.7) saturate(0.78) drop-shadow(0 10px 18px rgba(0, 0, 0, 0.14));
+}
+
+body.night-shift-red .digital-current-icon,
+body.night-shift-red .digital-forecast-icon,
+body.night-shift-red .forecast-tomorrow-icon,
+body.night-shift-red .forecast-icon {
+  filter: brightness(0.72) saturate(0.82) drop-shadow(0 8px 14px rgba(0, 0, 0, 0.18));
 }

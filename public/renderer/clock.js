@@ -1,10 +1,103 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const DIAL_CENTER = 380;
 const SECOND_HAND_ENABLED = true;
-const clockConfig = {
+let CLOCK_CFG = {
   timeFormat: '12',
-  leadingZero12h: true
+  leadingZero12h: true,
+  nightShift: false,
+  nightShiftStart: '22:00',
+  nightShiftEnd: '06:00'
 };
+
+const CLOCK_STALE_WARNING_MS = 2 * 60 * 1000 + 15 * 1000;
+
+const clockHealth = {
+  lastRenderAt: 0,
+  lastDisplayedMinuteKey: '',
+  lastMinuteAdvanceAt: 0
+};
+
+function setClockStatus(message) {
+  const el = document.getElementById('clock-status');
+  if (!el) return;
+
+  if (!message) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+
+  el.hidden = false;
+  el.textContent = message;
+}
+
+function parseTimeParts(value) {
+  if (typeof value !== 'string') return null;
+  const match = value.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+  return hours * 60 + minutes;
+}
+
+function isNightShiftActive(now = new Date()) {
+  if (!CLOCK_CFG.nightShift) return false;
+
+  const startMinutes = parseTimeParts(CLOCK_CFG.nightShiftStart);
+  const endMinutes = parseTimeParts(CLOCK_CFG.nightShiftEnd);
+  if (startMinutes == null || endMinutes == null) return false;
+
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  if (startMinutes === endMinutes) return true;
+  if (startMinutes < endMinutes) {
+    return nowMinutes >= startMinutes && nowMinutes < endMinutes;
+  }
+
+  return nowMinutes >= startMinutes || nowMinutes < endMinutes;
+}
+
+function applyNightShiftClass(now = new Date()) {
+  document.body.classList.toggle('night-shift-red', isNightShiftActive(now));
+}
+
+function isClockVisibleMode() {
+  const shell = document.querySelector('.app-shell');
+  if (!shell) return false;
+
+  return shell.classList.contains('mode-clock') || shell.classList.contains('mode-digital');
+}
+
+function resetClockHealth() {
+  const now = Date.now();
+  clockHealth.lastRenderAt = now;
+  clockHealth.lastMinuteAdvanceAt = now;
+  clockHealth.lastDisplayedMinuteKey = '';
+  setClockStatus('');
+}
+
+function updateClockHealth(now, minuteKey) {
+  const renderAt = now.getTime();
+  clockHealth.lastRenderAt = renderAt;
+
+  if (minuteKey !== clockHealth.lastDisplayedMinuteKey) {
+    clockHealth.lastDisplayedMinuteKey = minuteKey;
+    clockHealth.lastMinuteAdvanceAt = renderAt;
+  }
+}
+
+function updateClockStaleWarning() {
+  if (document.hidden || !isClockVisibleMode()) {
+    resetClockHealth();
+    return;
+  }
+
+  const staleForMs = Date.now() - clockHealth.lastMinuteAdvanceAt;
+  setClockStatus(staleForMs > CLOCK_STALE_WARNING_MS ? 'Clock paused' : '');
+}
 
 function polarPoint(angleDeg, radius) {
   const angleRad = (angleDeg - 90) * (Math.PI / 180);
@@ -131,8 +224,7 @@ function buildDialSvg() {
   secondGroup.style.display = SECOND_HAND_ENABLED ? '' : 'none';
 }
 
-function updateHands() {
-  const now = new Date();
+function updateHands(now = new Date()) {
   const hours = now.getHours() % 12;
   const minutes = now.getMinutes();
   const seconds = now.getSeconds();
@@ -153,7 +245,7 @@ function updateHands() {
 function formatDigitalTime(now) {
   const minutes = String(now.getMinutes()).padStart(2, '0');
 
-  if (clockConfig.timeFormat === '24') {
+  if (CLOCK_CFG.timeFormat === '24') {
     return {
       time: `${String(now.getHours()).padStart(2, '0')}:${minutes}`,
       meridiem: ''
@@ -163,7 +255,7 @@ function formatDigitalTime(now) {
   const meridiem = now.getHours() >= 12 ? 'PM' : 'AM';
   let displayHour = now.getHours() % 12;
   if (displayHour === 0) displayHour = 12;
-  const hourLabel = clockConfig.leadingZero12h
+  const hourLabel = CLOCK_CFG.leadingZero12h
     ? String(displayHour).padStart(2, '0')
     : String(displayHour);
 
@@ -173,8 +265,7 @@ function formatDigitalTime(now) {
   };
 }
 
-function updateCalendarLabels() {
-  const now = new Date();
+function updateCalendarLabels(now = new Date()) {
   const day = now.toLocaleDateString('en-US', { weekday: 'long' });
   const dateShort = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const dayEl = document.getElementById('day');
@@ -188,52 +279,87 @@ function updateCalendarLabels() {
   if (digitalDateEl) digitalDateEl.textContent = dateShort.toUpperCase();
 }
 
-function updateDigitalTime() {
+function updateDigitalTime(now = new Date()) {
   const digitalTimeEl = document.getElementById('digital-time');
   const digitalMeridiemEl = document.getElementById('digital-meridiem');
   if (!digitalTimeEl || !digitalMeridiemEl) return;
 
-  const { time, meridiem } = formatDigitalTime(new Date());
+  const { time, meridiem } = formatDigitalTime(now);
   digitalTimeEl.textContent = time;
   digitalMeridiemEl.textContent = meridiem;
   digitalMeridiemEl.style.display = meridiem ? '' : 'none';
 }
 
-async function fetchClockConfig() {
+async function loadClockConfig() {
   try {
     const response = await fetch('/config', { cache: 'no-store' });
+    if (!response.ok) return;
+
     const data = await response.json();
-    if (!response.ok || data.error) return;
+    if (!data || typeof data !== 'object' || data.error) return;
 
-    if (data.timeFormat === '24') {
-      clockConfig.timeFormat = '24';
-    } else {
-      clockConfig.timeFormat = '12';
-    }
-
+    CLOCK_CFG.timeFormat = data.timeFormat === '24' ? '24' : '12';
     if (typeof data.leadingZero12h === 'boolean') {
-      clockConfig.leadingZero12h = data.leadingZero12h;
+      CLOCK_CFG.leadingZero12h = data.leadingZero12h;
     }
+    if (typeof data.nightShift === 'boolean') CLOCK_CFG.nightShift = data.nightShift;
+    if (typeof data.nightShiftStart === 'string') CLOCK_CFG.nightShiftStart = data.nightShiftStart;
+    if (typeof data.nightShiftEnd === 'string') CLOCK_CFG.nightShiftEnd = data.nightShiftEnd;
   } catch (error) {
     console.error('Failed to load clock config:', error);
   }
 }
 
+function updateClockDisplay(now = new Date()) {
+  updateHands(now);
+  updateDigitalTime(now);
+
+  const minuteKey = [
+    now.getFullYear(),
+    now.getMonth() + 1,
+    now.getDate(),
+    now.getHours(),
+    now.getMinutes()
+  ].join(':');
+
+  updateClockHealth(now, minuteKey);
+  updateClockStaleWarning();
+  applyNightShiftClass(now);
+}
+
 function startClock() {
   buildDialSvg();
-  updateCalendarLabels();
-  updateHands();
-  updateDigitalTime();
-  fetchClockConfig().then(() => {
-    updateCalendarLabels();
-    updateDigitalTime();
+  resetClockHealth();
+
+  const now = new Date();
+  updateCalendarLabels(now);
+  updateClockDisplay(now);
+
+  loadClockConfig().then(() => {
+    const refreshedNow = new Date();
+    updateCalendarLabels(refreshedNow);
+    updateClockDisplay(refreshedNow);
   });
 
   setInterval(() => {
-    updateHands();
-    updateDigitalTime();
+    updateClockDisplay(new Date());
   }, 1000);
   setInterval(updateCalendarLabels, 60 * 60 * 1000);
+  setInterval(async () => {
+    await loadClockConfig();
+    updateClockDisplay(new Date());
+  }, 10 * 60 * 1000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      resetClockHealth();
+      return;
+    }
+
+    const visibleNow = new Date();
+    updateCalendarLabels(visibleNow);
+    updateClockDisplay(visibleNow);
+  });
 }
 
 startClock();

@@ -6,6 +6,7 @@ const FALLBACK_WEATHER = {
   is_day: true,
   thundersnow: false
 };
+const WEATHER_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
 const VIEW_MODES = {
   CLOCK: 'clock',
   DIGITAL: 'digital',
@@ -16,6 +17,34 @@ const VIEW_MODES = {
 let currentViewMode = VIEW_MODES.CLOCK;
 let defaultHomeViewMode = VIEW_MODES.DIGITAL;
 let lastHomeViewMode = VIEW_MODES.DIGITAL;
+
+function setWeatherStatus(message) {
+  const el = document.getElementById('weather-status');
+  if (!el) return;
+
+  if (!message) {
+    el.hidden = true;
+    el.textContent = '';
+    return;
+  }
+
+  el.hidden = false;
+  el.textContent = message;
+}
+
+function formatAgeMs(ageMs) {
+  if (!Number.isFinite(ageMs) || ageMs < 0) return '';
+
+  const minuteMs = 60 * 1000;
+  const hourMs = 60 * minuteMs;
+  const dayMs = 24 * hourMs;
+
+  if (ageMs >= dayMs) return `${Math.round(ageMs / dayMs)}d ago`;
+  if (ageMs >= hourMs) return `${Math.round(ageMs / hourMs)}h ago`;
+
+  const minutes = Math.max(1, Math.round(ageMs / minuteMs));
+  return `${minutes}m ago`;
+}
 
 function getHomeFallbackForecastItems() {
   return Array.from({ length: 5 }, () => FALLBACK_WEATHER);
@@ -238,20 +267,28 @@ async function fetchWeather() {
     const data = await response.json();
 
     if (!response.ok || data.error || !data.current) {
-      renderWeather(FALLBACK_WEATHER);
-      renderForecast(null);
-      renderDigitalWeather(FALLBACK_WEATHER, null);
+      if (data?.error) {
+        console.error('Weather fetch error:', data.error);
+      }
+      setWeatherStatus('Weather data stale');
       return;
     }
 
     renderWeather(data.current);
     renderForecast(data.forecast);
     renderDigitalWeather(data.current, data.forecast);
+
+    if (data.stale) {
+      const updatedAtMs = Date.parse(data.updatedAt);
+      const derivedAgeMs = Number.isFinite(updatedAtMs) ? Date.now() - updatedAtMs : data.staleAgeMs;
+      const ageLabel = formatAgeMs(derivedAgeMs);
+      setWeatherStatus(ageLabel ? `Weather updated ${ageLabel}` : 'Weather data stale');
+    } else {
+      setWeatherStatus('');
+    }
   } catch (error) {
     console.error('Weather fetch failed:', error);
-    renderWeather(FALLBACK_WEATHER);
-    renderForecast(null);
-    renderDigitalWeather(FALLBACK_WEATHER, null);
+    setWeatherStatus('Weather data stale');
   }
 }
 
@@ -321,11 +358,12 @@ async function initializeWeatherUi() {
   renderWeather(FALLBACK_WEATHER);
   renderForecast(null);
   renderDigitalWeather(FALLBACK_WEATHER, null);
+  setWeatherStatus('');
   setupSwipeNavigation();
   await fetchAppConfig();
   setViewMode(defaultHomeViewMode);
   fetchWeather();
-  setInterval(fetchWeather, 10 * 60 * 1000);
+  setInterval(fetchWeather, WEATHER_REFRESH_INTERVAL_MS);
 }
 
 initializeWeatherUi();

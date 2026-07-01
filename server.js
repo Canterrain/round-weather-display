@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const dgram = require('dgram');
+const { pickRepresentativeForecastCode } = require('./forecast-representative');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -657,6 +658,9 @@ app.get('/config', (req, res) => {
   res.json({
     timeFormat: cfg.timeFormat || cfg.clockFormat || cfg.format || null, // tolerate older keys
     leadingZero12h: typeof cfg.leadingZero12h === 'boolean' ? cfg.leadingZero12h : true,
+    nightShift: cfg.nightShift === true,
+    nightShiftStart: typeof cfg.nightShiftStart === 'string' ? cfg.nightShiftStart : '22:00',
+    nightShiftEnd: typeof cfg.nightShiftEnd === 'string' ? cfg.nightShiftEnd : '06:00',
     units: cfg.units || null,
     deviceId: cfg.deviceId || null,
     roomName: cfg.roomName || null,
@@ -813,16 +817,14 @@ app.get('/weather', async (req, res) => {
     const cfg = await ensureLatLonTimezone(config);
     const tempUnit = temperatureUnitFromCfg(cfg);
 
-    // Need enough daily entries so we can build 5 forecast cards (tomorrow..+5)
     const forecastDays = 6;
 
-    // minutely_15 helps detect active precip (snow/rain) between hourly marks
     const url =
       `https://api.open-meteo.com/v1/forecast` +
       `?latitude=${encodeURIComponent(cfg.lat)}` +
       `&longitude=${encodeURIComponent(cfg.lon)}` +
       `&current_weather=true` +
-      `&hourly=weathercode,snowfall` +
+      `&hourly=weathercode,precipitation_probability,precipitation,rain,showers,snowfall,cloud_cover` +
       `&minutely_15=precipitation,snowfall` +
       `&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weathercode` +
       `&temperature_unit=${encodeURIComponent(tempUnit)}` +
@@ -877,39 +879,50 @@ app.get('/weather', async (req, res) => {
 
     const currentThundersnow = isThundersnow(cfg, currentCode, currentTemp, tempUnit);
 
-    // Clamp hi/lo so current isn’t visually above “high”
     const fixedHigh = highToday == null ? currentTemp : Math.max(highToday, currentTemp);
     const fixedLow = lowToday == null ? currentTemp : Math.min(lowToday, currentTemp);
-
     const sunriseToday = safeDailyValue(daily.sunrise, 0) || null;
     const sunsetToday = safeDailyValue(daily.sunset, 0) || null;
+    const snowTempThreshold = getTempThresholdForSnow(cfg, tempUnit);
 
     const forecast = [];
     for (let i = 1; i <= 5; i++) {
       const maxRaw = safeDailyValue(daily.temperature_2m_max, i);
       const minRaw = safeDailyValue(daily.temperature_2m_min, i);
       const codeRaw = safeDailyValue(daily.weathercode, i);
+      const dayDate = safeDailyValue(daily.time, i) || String(safeDailyValue(daily.sunrise, i) || '').slice(0, 10);
 
-      if (maxRaw == null || minRaw == null || codeRaw == null) continue;
+      if (maxRaw == null || minRaw == null || codeRaw == null || !dayDate) continue;
 
       const max = Math.round(maxRaw);
       const min = Math.round(minRaw);
       const mid = Math.round((max + min) / 2);
-      const code = Number(codeRaw);
-
+      const dailyCode = Number(codeRaw);
+      const representative = pickRepresentativeForecastCode({
+        date: dayDate,
+        dailyCode,
+        dailyHigh: max,
+        dailyLow: min,
+        hourly,
+        snowTempThreshold
+      });
+      const code = Number(representative.code);
       const thundersnow = isThundersnow(cfg, code, mid, tempUnit);
 
       forecast.push({
         temp: max,
         high: max,
         low: min,
+        dailyCode,
         code,
         is_day: true,
         thundersnow
       });
     }
 
+    const updatedAt = new Date().toISOString();
     const payload = {
+      updatedAt,
       current: {
         temp: currentTemp,
         high: fixedHigh,
