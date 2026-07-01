@@ -7,7 +7,11 @@ A round analog weather clock designed for Raspberry Pi displays. The UI combines
 - Analog round clock face with configurable 12h or 24h time
 - Day/date display
 - Real-time weather via Open-Meteo (no API key required)
+- Smarter forecast icons based on how most of the day looks, not just one noisy daily weather code
+- Subtle stale weather indicator if Open-Meteo is temporarily unavailable
+- Conservative clock health warning if the visible clock appears paused
 - Custom SVG weather icons
+- Optional red nightshift mode for a dimmer nighttime display
 - Swipeable forecast screen
 - Local message screen with phone-accessible message entry
 - Important/unread message indicator on the main clock face
@@ -68,7 +72,7 @@ http://clock.local:3000/messages
 - Configures auto-start:
   - Bookworm (X11): PM2
   - Trixie (Wayland/labwc): labwc autostart
-- Sets up fonts and weather configuration
+- Sets up fonts, weather configuration, and optional nightshift settings
 - Sets up clock/device identity and message-sharing mode
 - After reboot, the display should launch automatically.
 
@@ -92,6 +96,9 @@ Example:
   "defaultClockFace": "digital",
   "timeFormat": "12",
   "leadingZero12h": true,
+  "nightShift": false,
+  "nightShiftStart": "22:00",
+  "nightShiftEnd": "06:00",
   "thundersnowF": 34,
   "thundersnowC": 1,
   "recentSnowHours": 2,
@@ -134,15 +141,59 @@ Example:
   
   - false → 7:00 AM
 
+### Night Options
+
+- "nightShift"
+
+  - false → normal color mode all day
+
+  - true → switches to a dim red mode during the configured night window
+
+- "nightShiftStart"
+- "nightShiftEnd"
+
+  Example:
+
+  - "22:00" → 10:00 PM
+
+  - "06:00" → 6:00 AM
+
+This mode is optional and is meant to make the display feel more like a night clock, not an alert screen.
+
+### Message Options
+
 - "messageSharing"
 
   - "single" → this clock uses its own local messages
 
   - "shared" → this clock automatically looks for other shared clocks on the LAN
 
+These settings only affect how this specific clock behaves locally. The shared household message protocol remains compatible with `weather-display`.
+
 ### Weather Behavior
 
-The system uses Open-Meteo’s current_weather field as the primary source.
+The system uses Open-Meteo’s `current_weather` field as the primary source for current conditions, then applies a few small corrections to make the display behave more like a real household weather clock.
+
+Current weather behavior:
+
+- The display prefers recent observed precipitation over a stale-looking current icon
+- Recent snow can briefly keep the snow icon visible even after precipitation has just stopped
+- If Open-Meteo temporarily fails, the server will keep serving the last known good weather payload instead of going blank
+- When that happens, the frontend shows a subtle stale weather message so you know the display is running on cached data
+
+Forecast behavior:
+
+- Daily high and low temperatures still come from Open-Meteo daily data
+- Forecast icons do not blindly use Open-Meteo’s daily `weathercode`
+- Instead, the clock looks at daytime hourly conditions, roughly 8 AM through 8 PM, and picks a representative icon based on what most of the day looks like
+- This helps avoid days showing as thunderstorms just because one small forecast window contains storm risk
+- The raw Open-Meteo daily code is still included internally as `dailyCode` for debugging, but the displayed forecast icon uses the representative daytime code
+
+Status behavior:
+
+- Weather status text stays hidden unless there is actually a problem
+- If weather data is being served from the last known good payload, the display shows a subtle `Weather updated ... ago` or `Weather data stale` message
+- The frontend also uses a very conservative visible-clock health check and only shows `Clock paused` if the clock appears frozen for roughly 2 minutes while the clock is actually on screen
 
 Optional tuning values (advanced users):
 
@@ -176,7 +227,9 @@ Optional tuning values (advanced users):
 
   These set the temperature threshold for preferring a thundersnow icon instead of a standard thunderstorm icon.
 
-These defaults are conservative and do not fabricate weather data — they only interpret recent official Open-Meteo measurements.
+Additional advanced tuning is also supported for recent precipitation detection and snow/rain temperature thresholds.
+
+These defaults are conservative and do not fabricate weather data — they only reinterpret recent official Open-Meteo measurements in a way that tends to look more like a normal consumer weather display.
 
 ## 🎨 Weather Icon Customization
 
