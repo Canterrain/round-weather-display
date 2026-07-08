@@ -25,19 +25,26 @@ body {
   --hour-hand: #f4f6fb;
   --minute-hand: #b8ddff;
   --hub-shadow: rgba(0, 0, 0, 0.45);
+  --night-ui-dim: 0.55;
   --night-shift-face-edge: rgba(179, 94, 94, 0.18);
   --night-shift-face-glow: rgba(110, 28, 28, 0.12);
   --night-shift-status: rgba(203, 120, 120, 0.82);
 }
 
 body {
+  background-color: #010203;
   background:
     radial-gradient(circle at center, rgba(39, 53, 79, 0.55) 0%, rgba(8, 12, 18, 0.96) 58%, #010203 100%);
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
   color: var(--text-primary);
   font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
 }
 
 .app-shell {
+  position: relative;
+  z-index: 1;
   width: 100vw;
   height: 100vh;
   display: grid;
@@ -56,6 +63,13 @@ body {
   -webkit-tap-highlight-color: transparent;
   user-select: none;
   -webkit-user-select: none;
+  transition: filter 180ms ease;
+}
+
+/* background-switcher.js toggles these classes using sunrise/sunset timing */
+body.night-background .clock-stage,
+body.is-night .clock-stage {
+  filter: brightness(var(--night-ui-dim));
 }
 
 .status-stack {

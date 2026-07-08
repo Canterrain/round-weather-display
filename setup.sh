@@ -66,11 +66,14 @@ echo "Message sharing:"
 echo "1. Just this clock"
 echo "2. Shared with other clocks"
 read -r -p "Choose 1 or 2 [1]: " messageSharingChoice
+read -r -p "Enable red nightshift mode, dim red text from 22:00 to 06:00? (y/N) [N]: " nightShiftChoice
 
 leadingZero12h="true"
+nightShift="false"
 roomName="${roomName:-Clock}"
 defaultClockFaceChoice="${defaultClockFaceChoice:-2}"
 messageSharingChoice="${messageSharingChoice:-1}"
+nightShiftChoice="${nightShiftChoice:-N}"
 
 if [[ "$timeFormat" != "12" && "$timeFormat" != "24" ]]; then
   timeFormat="12"
@@ -90,6 +93,11 @@ if [[ "$defaultClockFaceChoice" == "2" ]]; then
 else
   defaultClockFace="analog"
 fi
+
+case "$nightShiftChoice" in
+  Y|y) nightShift="true" ;;
+  *)   nightShift="false" ;;
+esac
 
 deviceId="$(
   printf '%s' "$roomName" \
@@ -363,6 +371,9 @@ cat <<EOF > "$TARGET_DIR/config.json"
   "defaultClockFace": "$defaultClockFace",
   "timeFormat": "$timeFormat",
   "leadingZero12h": $leadingZero12h,
+  "nightShift": $nightShift,
+  "nightShiftStart": "22:00",
+  "nightShiftEnd": "06:00",
   "thundersnowF": 34,
   "thundersnowC": 1,
   "recentSnowHours": 2,
