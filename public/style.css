@@ -930,6 +930,19 @@ body.night-shift-red .digital-face::after {
     inset 0 0 14px rgba(140, 52, 52, 0.08);
 }
 
+/*
+  Match weather-display PR #9 by hiding the home-screen weather UI during
+  afterhours while leaving background weather fetches untouched.
+*/
+body.night-shift-red .weather-icon-bg,
+body.night-shift-red .center-display,
+body.night-shift-red .digital-current,
+body.night-shift-red .digital-divider,
+body.night-shift-red .digital-forecast-list,
+body.night-shift-red #weather-status {
+  display: none;
+}
+
 body.night-shift-red .day-label,
 body.night-shift-red .digital-day,
 body.night-shift-red .digital-time,
