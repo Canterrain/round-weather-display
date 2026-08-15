@@ -136,18 +136,25 @@
       <ol style="text-align: left;">
         <li>Plug your ESP32-P4 board into your computer with a USB-C cable. (Make sure it's a real data cable —
           some cables that come with chargers are power-only and won't work here.)</li>
-        <li>Click the button below.</li>
-        <li>Your browser will show a list of devices — pick the one that looks like your board (it may show up as
+        <li>Find the small <strong>BOOT</strong> and <strong>RESET</strong> buttons on the board.</li>
+        <li>Click the button below, and pick your board from the list your browser shows (it may show up as
           "USB JTAG/serial debug unit" or similar).</li>
+        <li>If it says it can't connect: hold <strong>BOOT</strong> down, tap <strong>RESET</strong> once while
+          still holding BOOT, then try connecting again while still holding BOOT. Let go once it says it's
+          connected.</li>
+        <li>If you're asked whether to erase the device first, <strong>leave that unchecked</strong> — it isn't
+          needed and is more likely to fail partway through.</li>
         <li>Click <strong>Install</strong>. It'll take a couple of minutes — don't unplug the board or close this
           tab while it's working.</li>
+        <li><strong>When it says "Install complete," the screen will likely stay blank.</strong> That's expected if
+          you had to use the BOOT+RESET trick above — press <strong>RESET</strong> once (or unplug and replug the
+          board) to actually boot into the new software.</li>
       </ol>
       <p>
         <esp-web-install-button manifest="firmware/manifest.json"></esp-web-install-button>
       </p>
       <p style="font-size: 14px; color: rgba(210,220,240,0.6);">
-        First time setting this board up? Choose "Install" (it'll erase and start fresh). Already have it running
-        and just want the newest version? Same button — pick "Install" again to update.
+        Setting this board up for the first time, or updating one that's already running — same button either way.
       </p>
     </div>
 
@@ -179,10 +186,18 @@
       <ul>
         <li><strong>Don't see your device in the list?</strong> Try a different USB cable (it needs to carry data,
           not just power), or try a different USB port.</li>
+        <li><strong>"Failed to initialize" / won't connect?</strong> Use the BOOT+RESET button steps above — this
+          board doesn't always auto-reset into installer mode on its own. Also try a different browser; Chrome,
+          Edge, and Firefox don't all behave identically here.</li>
+        <li><strong>Got asked to erase the device and it failed partway through?</strong> Try again with the erase
+          option unchecked — erasing isn't required, and it's the more failure-prone path on this board.</li>
         <li><strong>Install button greyed out or missing?</strong> Double check you're using Chrome, Edge, or
           Firefox — not Safari.</li>
-        <li><strong>Still stuck?</strong> Open an issue on the
-          <a href="https://github.com/Canterrain/round-weather-display/issues">project's GitHub page</a>.</li>
+        <li><strong>Still no luck?</strong> The fallback that always works: build and flash from source using
+          <code>targets/esp32-p4/scripts/setup.sh</code> (needs a bit more setup, but it's the same process we use
+          to build this firmware ourselves). See the
+          <a href="https://github.com/Canterrain/round-weather-display">main project page</a>, or open an issue on
+          the <a href="https://github.com/Canterrain/round-weather-display/issues">project's GitHub page</a>.</li>
       </ul>
     </div>
 
