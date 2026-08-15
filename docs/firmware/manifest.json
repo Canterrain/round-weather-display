@@ -2,6 +2,7 @@
   "name": "Round Weather Display (ESP32-P4)",
   "version": "1.1.0",
   "new_install_prompt_erase": false,
+  "new_install_improv_wait_time": 0,
   "builds": [
     {
       "chipFamily": "ESP32-P4",
