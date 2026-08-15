@@ -1,0 +1,84 @@
+menu "Round Weather Display"
+
+config RWD_ENABLE_CLOCK_BENCHMARK
+    bool "Enable clock benchmark mode"
+    default n
+    help
+        Build an opt-in LVGL benchmark screen that adds the analog clock
+        elements one phase at a time while logging frame timing, heap, PSRAM,
+        LVGL heap, and stall-warning telemetry.
+
+config RWD_ENABLE_ANALOG_PARITY_LAB
+    bool "Enable analog parity lab mode"
+    default n
+    depends on !RWD_ENABLE_CLOCK_BENCHMARK
+    help
+        Build an opt-in analog parity lab that exercises multiple ESP32-P4
+        implementations of the Pi analog clock from one firmware image while
+        logging concise stability and memory diagnostics.
+
+config RWD_DEBUG_DIRECT_WEATHER_ICON_TEST
+    bool "Enable direct weather icon render probe"
+    default n
+    depends on !RWD_ENABLE_CLOCK_BENCHMARK
+    help
+        Build a temporary root-screen weather icon probe that renders a known
+        generated icon descriptor directly, bypassing layout and weather lookup
+        code so the asset pipeline can be validated in isolation.
+
+config RWD_ANALOG_PARITY_LAB_PHASE_MS
+    int "Analog parity lab case duration (ms)"
+    depends on RWD_ENABLE_ANALOG_PARITY_LAB
+    range 1500 30000
+    default 6000
+    help
+        How long each parity-lab case remains active before the next case is
+        enabled automatically.
+
+config RWD_ANALOG_PARITY_LAB_SAMPLE_MS
+    int "Analog parity lab telemetry interval (ms)"
+    depends on RWD_ENABLE_ANALOG_PARITY_LAB
+    range 250 10000
+    default 1000
+    help
+        How often the parity lab refreshes its in-memory stall and heap
+        telemetry between case transitions.
+
+choice RWD_CLOCK_BENCHMARK_PASS_MODE
+    prompt "Clock benchmark pass mode"
+    depends on RWD_ENABLE_CLOCK_BENCHMARK
+    default RWD_CLOCK_BENCHMARK_PASS_MODE_BOTH
+    help
+        Choose whether the benchmark accumulates layers, isolates each stage on
+        a fresh shell, or runs both passes automatically.
+
+config RWD_CLOCK_BENCHMARK_PASS_MODE_CUMULATIVE_ONLY
+    bool "Cumulative only"
+
+config RWD_CLOCK_BENCHMARK_PASS_MODE_ISOLATED_ONLY
+    bool "Isolated only"
+
+config RWD_CLOCK_BENCHMARK_PASS_MODE_BOTH
+    bool "Run both passes"
+
+endchoice
+
+config RWD_CLOCK_BENCHMARK_PHASE_MS
+    int "Clock benchmark phase duration (ms)"
+    depends on RWD_ENABLE_CLOCK_BENCHMARK
+    range 1000 30000
+    default 6000
+    help
+        How long each visual layer remains active before the next layer is
+        added during the benchmark.
+
+config RWD_CLOCK_BENCHMARK_SAMPLE_MS
+    int "Clock benchmark log interval (ms)"
+    depends on RWD_ENABLE_CLOCK_BENCHMARK
+    range 250 10000
+    default 1000
+    help
+        How often the benchmark emits frame, heap, PSRAM, LVGL heap, and
+        stall-warning telemetry to the serial log.
+
+endmenu

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="344 344 72 72">
+  <defs>
+    <radialGradient id="center-cap-gradient" cx="35%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="#edf2f8"/>
+      <stop offset="55%" stop-color="#c3ccd9"/>
+      <stop offset="100%" stop-color="#7d8796"/>
+    </radialGradient>
+    <filter id="cap-shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+  <circle cx="380" cy="380" r="15" fill="url(#center-cap-gradient)" stroke="#ffffff" stroke-opacity="0.28" stroke-width="1.5" filter="url(#cap-shadow)"/>
+  <circle cx="380" cy="380" r="8" fill="#eaf0f7" fill-opacity="0.92" stroke="#546174" stroke-opacity="0.34" stroke-width="1"/>
+</svg>

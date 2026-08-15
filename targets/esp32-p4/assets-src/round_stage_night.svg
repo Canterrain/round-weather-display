@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <defs>
+    <radialGradient id="stage-bg" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="rgba(36, 10, 10, 0.72)"/>
+      <stop offset="58%" stop-color="rgba(10, 4, 4, 0.98)"/>
+      <stop offset="100%" stop-color="#010101"/>
+    </radialGradient>
+    <filter id="face-shadow" x="-12%" y="-12%" width="124%" height="136%">
+      <feOffset dy="20" result="offset"/>
+      <feGaussianBlur in="offset" stdDeviation="24" result="blur"/>
+      <feColorMatrix
+        in="blur"
+        type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0.45 0"
+        result="shadow"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="800" height="800" fill="url(#stage-bg)"/>
+
+  <defs>
+    <radialGradient id="face-fill" cx="50%" cy="46%" r="54%">
+      <stop offset="0%" stop-color="rgba(82, 30, 30, 0.18)"/>
+      <stop offset="38%" stop-color="rgba(27, 11, 11, 0.78)"/>
+      <stop offset="72%" stop-color="rgba(11, 6, 6, 0.96)"/>
+      <stop offset="100%" stop-color="rgba(3, 1, 1, 0.99)"/>
+    </radialGradient>
+    <radialGradient id="face-glow" cx="50%" cy="46%" r="54%">
+      <stop offset="0%" stop-color="rgba(110, 28, 28, 0.08)"/>
+      <stop offset="44%" stop-color="rgba(0, 0, 0, 0)"/>
+      <stop offset="100%" stop-color="rgba(0, 0, 0, 0)"/>
+    </radialGradient>
+  </defs>
+
+  <g filter="url(#face-shadow)">
+    <circle cx="400" cy="382" r="390" fill="url(#face-fill)"/>
+    <circle cx="400" cy="382" r="390" fill="url(#face-glow)"/>
+    <circle cx="400" cy="382" r="389" fill="none" stroke="rgba(179, 94, 94, 0.18)" stroke-width="2"/>
+    <circle cx="400" cy="382" r="372" fill="none" stroke="rgba(255, 255, 255, 0.04)" stroke-width="1"/>
+  </g>
+
+</svg>

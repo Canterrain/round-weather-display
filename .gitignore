@@ -19,21 +19,51 @@ build/
 *.bak
 
 # Local config / secrets
-config*.json
-!config.example.json
-messages.json
+targets/pi/config*.json
+!shared/spec/config.example.json
+targets/pi/messages.json
 
 # User-provided background overrides
-public/assets/background.jpg
-public/assets/background.png
-public/assets/background.webp
-public/assets/background-day.jpg
-public/assets/background-day.png
-public/assets/background-day.webp
-public/assets/background-night.jpg
-public/assets/background-night.png
-public/assets/background-night.webp
+shared/assets/background.jpg
+shared/assets/background.png
+shared/assets/background.webp
+shared/assets/background-day.jpg
+shared/assets/background-day.png
+shared/assets/background-day.webp
+shared/assets/background-night.jpg
+shared/assets/background-night.png
+shared/assets/background-night.webp
 
 # Optional icon themes and local backups
-public/assets/icon-themes/
-public/assets/icons.base/
+shared/assets/icon-themes/
+shared/assets/icons.base/
+
+# ESP-IDF generated files
+.esp-idf/
+# Covers build/, build-benchmark/, build-benchmark-tuned/, build-parity-lab/,
+# and any future build-* variant -- not just the default build/ dir.
+targets/esp32-p4/build*/
+targets/esp32-p4/managed_components/
+targets/esp32-p4/sdkconfig
+targets/esp32-p4/sdkconfig.old
+targets/esp32-p4/sdkconfig.*.generated
+
+# Device backups (NVS/flash dumps) -- can contain live WiFi credentials and
+# other device config, never appropriate to commit.
+targets/esp32-p4/backups/
+
+# Debug/diagnostic serial captures from development sessions -- useful
+# locally, not meant to accumulate forever in permanent repo history. Key
+# findings from these are written up in shared/spec/ instead.
+targets/esp32-p4/benchmark-logs/
+targets/esp32-p4/runtime-logs/
+
+# Python bytecode cache (any location, not just targets/esp32-p4/tools/)
+__pycache__/
+*.pyc
+
+# Local Python virtualenv used for the asset-generation tooling
+.venv/
+
+# UI debugging photo archive -- local reference only, not a product asset.
+ui_bugs/

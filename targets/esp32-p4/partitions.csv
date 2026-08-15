@@ -1,0 +1,8 @@
+# Name,   Type, SubType, Offset,  Size, Flags
+# ESP32-P4 hosted Wi-Fi and embedded parity assets produce a large app image.
+# This layout favors a much larger factory partition while still leaving
+# substantial SPIFFS space on 32 MB boards for future local assets.
+nvs,      data, nvs,     ,        0x6000,
+phy_init, data, phy,     ,        0x1000,
+factory,  app,  factory, ,        20M,
+storage,  data, spiffs,  ,        11M,

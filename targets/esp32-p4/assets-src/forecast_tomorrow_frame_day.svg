@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="500" viewBox="0 0 500 500">
+  <defs>
+    <radialGradient id="forecast-disc-gradient" cx="46%" cy="34%" r="72%">
+      <stop offset="0%" stop-color="rgba(98, 141, 214, 0.22)"/>
+      <stop offset="52%" stop-color="rgba(53, 78, 126, 0.16)"/>
+      <stop offset="100%" stop-color="rgba(14, 22, 39, 0.12)"/>
+    </radialGradient>
+  </defs>
+  <circle cx="250" cy="250" r="232" fill="url(#forecast-disc-gradient)"/>
+  <circle cx="250" cy="250" r="248" fill="none" stroke="rgba(214, 226, 240, 0.28)" stroke-width="3"/>
+  <circle cx="250" cy="250" r="234" fill="none" stroke="rgba(196, 210, 226, 0.22)" stroke-width="2"/>
+</svg>

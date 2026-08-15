@@ -1,0 +1,22 @@
+{
+  "name": "round-weather-display-pi",
+  "version": "1.0.1",
+  "description": "Raspberry Pi target for the round weather display",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test:forecast": "node scripts/validate-forecast-representative.js",
+    "test:location": "node ../../shared/scripts/validate-location-resolution.js"
+  },
+  "engines": {
+    "node": ">=18 <21",
+    "npm": ">=9"
+  },
+  "dependencies": {
+    "abort-controller": "^3.0.0",
+    "electron": "^28.3.3",
+    "express": "^4.22.1",
+    "node-fetch": "^2.7.0"
+  }
+}

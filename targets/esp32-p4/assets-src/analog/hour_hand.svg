@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="350 228 60 208">
+  <defs>
+    <filter id="hand-shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+  <g filter="url(#hand-shadow)">
+    <path d="M 380 238 L 398 266 L 392 350 L 387 406 L 380 424 L 373 406 L 368 350 L 362 266 Z" fill="#aeb7c1" fill-opacity="0.98"/>
+    <path d="M 380 238 L 362 266 L 368 350 L 373 406 L 380 424 L 380 405 L 377.6 350 L 373.4 270 Z" fill="#505864" fill-opacity="0.96"/>
+    <path d="M 380 238 L 398 266 L 392 350 L 387 406 L 380 424 L 380 405 L 382.4 350 L 386.6 270 Z" fill="#dbe2ea" fill-opacity="0.94"/>
+    <path d="M 380 248 L 386.2 269 L 384.2 350 L 381.9 404 L 380 415 L 378.1 404 L 375.8 350 L 373.8 269 Z" fill="#f7fafc" fill-opacity="0.72"/>
+  </g>
+</svg>

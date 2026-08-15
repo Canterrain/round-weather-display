@@ -14,6 +14,8 @@ set -euo pipefail
 #       WEATHER_BRANCH=<branch> bash setup.sh
 #   - Optional:
 #       WEATHER_REPO_URL=<repo url>
+#   - Optional:
+#       WEATHER_HARDWARE_TARGET=pi bash setup.sh
 # -----------------------------------------------------------------------------
 
 echo "-------------------------------"
@@ -52,28 +54,126 @@ DEFAULT_REPO_URL="https://github.com/Canterrain/round-weather-display.git"
 REPO_URL="${WEATHER_REPO_URL:-$DEFAULT_REPO_URL}"
 
 # -----------------------------------------------------------------------------
+# Hardware target
+# -----------------------------------------------------------------------------
+HARDWARE_TARGET="${WEATHER_HARDWARE_TARGET:-}"
+if [[ -z "$HARDWARE_TARGET" ]]; then
+  echo "Hardware target:"
+  echo "1. Raspberry Pi + round HDMI display"
+  echo "2. ESP32-P4 3.4C round display"
+  read -r -p "Choose 1 or 2 [1]: " hardwareChoice
+  hardwareChoice="${hardwareChoice:-1}"
+
+  case "$hardwareChoice" in
+    2) HARDWARE_TARGET="esp32-p4" ;;
+    *) HARDWARE_TARGET="pi" ;;
+  esac
+fi
+
+if [[ "$HARDWARE_TARGET" != "pi" ]]; then
+  ESP32_SETUP_SCRIPT="$(cd "$(dirname "$0")" && pwd)/targets/esp32-p4/scripts/setup.sh"
+  if [[ ! -f "$ESP32_SETUP_SCRIPT" ]]; then
+    echo "ERROR: Expected the ESP32-P4 setup script at:"
+    echo "  $ESP32_SETUP_SCRIPT"
+    echo "This flow needs a full repo checkout (a dev toolchain and USB access to the"
+    echo "board), not the fresh headless install setup.sh does for the Pi. Clone the"
+    echo "repo first, then run: targets/esp32-p4/scripts/setup.sh"
+    exit 1
+  fi
+  exec bash "$ESP32_SETUP_SCRIPT"
+fi
+
+# -----------------------------------------------------------------------------
+# Path constants (needed early so we can load the previous install's config
+# as prompt defaults, and reused later for the backup-before-refresh step)
+# -----------------------------------------------------------------------------
+APP_NAME="round-weather-display"
+TARGET_DIR="$HOME/$APP_NAME"
+PI_TARGET_DIR="$TARGET_DIR/targets/pi"
+BACKUP_DIR="$HOME/${APP_NAME}-backups"
+SETUP_TMP="/tmp/${APP_NAME}-setup.sh"
+
+# -----------------------------------------------------------------------------
+# Load previous config.json (if this is a re-run/update) so prompts below can
+# default to what's already configured instead of forcing full re-entry.
+# -----------------------------------------------------------------------------
+prevConfigJson=""
+if [[ -f "$PI_TARGET_DIR/config.json" ]]; then
+  prevConfigJson="$PI_TARGET_DIR/config.json"
+  echo "Found existing config at $PI_TARGET_DIR/config.json -- reusing its values as defaults."
+fi
+
+read_prev() {
+  local key="$1"
+  local default="$2"
+  if [[ -z "$prevConfigJson" ]]; then
+    printf '%s' "$default"
+    return
+  fi
+  python3 - "$prevConfigJson" "$key" "$default" <<'PYEOF'
+import json, sys
+path, key, default = sys.argv[1], sys.argv[2], sys.argv[3]
+try:
+    with open(path) as f:
+        data = json.load(f)
+    value = data.get(key, default)
+    if value is None:
+        value = default
+    if isinstance(value, bool):
+        value = 'true' if value else 'false'
+    print(value)
+except Exception:
+    print(default)
+PYEOF
+}
+
+prevCity="$(read_prev location "")"
+prevRoomName="$(read_prev roomName "Clock")"
+prevTimeFormat="$(read_prev timeFormat "12")"
+prevUnits="$(read_prev units "imperial")"
+prevDefaultClockFace="$(read_prev defaultClockFace "digital")"
+prevMessageSharing="$(read_prev messageSharing "single")"
+prevNightShift="$(read_prev nightShift "false")"
+prevLeadingZero12h="$(read_prev leadingZero12h "true")"
+
+prevDefaultClockFaceChoice="2"
+[[ "$prevDefaultClockFace" == "analog" ]] && prevDefaultClockFaceChoice="1"
+
+prevMessageSharingChoice="1"
+[[ "$prevMessageSharing" == "shared" ]] && prevMessageSharingChoice="2"
+
+prevNightShiftChoice="N"
+[[ "$prevNightShift" == "true" ]] && prevNightShiftChoice="Y"
+
+prevLeadingZero12hChoice="Y"
+[[ "$prevLeadingZero12h" == "false" ]] && prevLeadingZero12hChoice="N"
+
+# -----------------------------------------------------------------------------
 # Config prompts
 # -----------------------------------------------------------------------------
-read -r -p "Enter your city (e.g., Cincinnati,OH,US): " city
-read -r -p "Enter a room label for this clock (e.g., Kitchen, Office, Bedroom): " roomName
-read -r -p "Choose time format (12 or 24): " timeFormat
-read -r -p "Choose temperature units (imperial or metric): " units
+read -r -p "Enter your city (e.g., Loveland,OH,US)${prevCity:+ [$prevCity]}: " city
+city="${city:-$prevCity}"
+read -r -p "Enter a room label for this clock (e.g., Kitchen, Office, Bedroom) [$prevRoomName]: " roomName
+read -r -p "Choose time format (12 or 24) [$prevTimeFormat]: " timeFormat
+read -r -p "Choose temperature units (imperial or metric) [$prevUnits]: " units
 echo "Default clock face:"
 echo "1. Analog"
 echo "2. Digital"
-read -r -p "Choose 1 or 2 [2]: " defaultClockFaceChoice
+read -r -p "Choose 1 or 2 [$prevDefaultClockFaceChoice]: " defaultClockFaceChoice
 echo "Message sharing:"
 echo "1. Just this clock"
 echo "2. Shared with other clocks"
-read -r -p "Choose 1 or 2 [1]: " messageSharingChoice
-read -r -p "Enable red nightshift mode, dim red text from 22:00 to 06:00? (y/N) [N]: " nightShiftChoice
+read -r -p "Choose 1 or 2 [$prevMessageSharingChoice]: " messageSharingChoice
+read -r -p "Enable red nightshift mode, dim red text from 22:00 to 06:00? (y/N) [$prevNightShiftChoice]: " nightShiftChoice
 
 leadingZero12h="true"
 nightShift="false"
-roomName="${roomName:-Clock}"
-defaultClockFaceChoice="${defaultClockFaceChoice:-2}"
-messageSharingChoice="${messageSharingChoice:-1}"
-nightShiftChoice="${nightShiftChoice:-N}"
+roomName="${roomName:-$prevRoomName}"
+timeFormat="${timeFormat:-$prevTimeFormat}"
+units="${units:-$prevUnits}"
+defaultClockFaceChoice="${defaultClockFaceChoice:-$prevDefaultClockFaceChoice}"
+messageSharingChoice="${messageSharingChoice:-$prevMessageSharingChoice}"
+nightShiftChoice="${nightShiftChoice:-$prevNightShiftChoice}"
 
 if [[ "$timeFormat" != "12" && "$timeFormat" != "24" ]]; then
   timeFormat="12"
@@ -112,8 +212,8 @@ fi
 deviceId="${deviceId}-clock"
 
 if [[ "$timeFormat" == "12" ]]; then
-  read -r -p "Show leading zero in 12-hour mode, 07:00 AM instead of 7:00 AM? (Y/n) [Y]: " lz
-  lz="${lz:-Y}"
+  read -r -p "Show leading zero in 12-hour mode, 07:00 AM instead of 7:00 AM? (Y/n) [$prevLeadingZero12hChoice]: " lz
+  lz="${lz:-$prevLeadingZero12hChoice}"
   case "$lz" in
     Y|y) leadingZero12h="true" ;;
     N|n) leadingZero12h="false" ;;
@@ -217,15 +317,10 @@ npm config set fetch-retry-maxtimeout 120000 >/dev/null 2>&1 || true
 # -----------------------------------------------------------------------------
 # Backup existing config.json before refresh
 # -----------------------------------------------------------------------------
-APP_NAME="round-weather-display"
-TARGET_DIR="$HOME/$APP_NAME"
-BACKUP_DIR="$HOME/${APP_NAME}-backups"
-SETUP_TMP="/tmp/${APP_NAME}-setup.sh"
-
-if [[ -f "$TARGET_DIR/config.json" ]]; then
+if [[ -f "$PI_TARGET_DIR/config.json" ]]; then
   ts="$(date +%Y%m%d-%H%M%S)"
   mkdir -p "$BACKUP_DIR"
-  cp -f "$TARGET_DIR/config.json" "$BACKUP_DIR/config.json.$ts.bak"
+  cp -f "$PI_TARGET_DIR/config.json" "$BACKUP_DIR/config.json.$ts.bak"
   echo "Backed up existing config.json to: ~/${APP_NAME}-backups/config.json.$ts.bak"
 fi
 
@@ -253,100 +348,19 @@ echo "Cloning $APP_NAME from configured repository..."
 rm -rf "$TARGET_DIR"
 git clone --branch "$REPO_BRANCH" --single-branch "$REPO_URL" "$TARGET_DIR"
 
+if [[ ! -d "$PI_TARGET_DIR" ]]; then
+  echo "ERROR: Expected Raspberry Pi target at $PI_TARGET_DIR"
+  exit 1
+fi
+
 # -----------------------------------------------------------------------------
 # Resolve city -> lat/lon/timezone via Open-Meteo Geocoding API
 # -----------------------------------------------------------------------------
 echo "Resolving location to latitude/longitude/timezone..."
-geo_json="$(python3 - <<PY
-import json, urllib.parse, urllib.request, sys, re
-
-raw = ${city@Q}
-
-parts = [p.strip() for p in raw.split(",") if p.strip()]
-name = parts[0] if parts else raw.strip()
-
-state = parts[1] if len(parts) >= 2 else None
-country = parts[2] if len(parts) >= 3 else None
-
-countryCodeParam = ""
-if country and re.fullmatch(r"[A-Za-z]{2}", country):
-  countryCodeParam = f"&countryCode={urllib.parse.quote(country.upper())}"
-
-url = (
-  "https://geocoding-api.open-meteo.com/v1/search"
-  f"?name={urllib.parse.quote(name)}"
-  "&count=10&language=en&format=json"
-  f"{countryCodeParam}"
-)
-
-try:
-  with urllib.request.urlopen(url, timeout=10) as r:
-    data = json.load(r)
-except Exception:
-  data = {}
-
-results = data.get("results") or []
-if not results:
-  print("")
-  sys.exit(0)
-
-US_STATE = {
-  "AL":"Alabama","AK":"Alaska","AZ":"Arizona","AR":"Arkansas","CA":"California","CO":"Colorado","CT":"Connecticut",
-  "DE":"Delaware","FL":"Florida","GA":"Georgia","HI":"Hawaii","ID":"Idaho","IL":"Illinois","IN":"Indiana","IA":"Iowa",
-  "KS":"Kansas","KY":"Kentucky","LA":"Louisiana","ME":"Maine","MD":"Maryland","MA":"Massachusetts","MI":"Michigan",
-  "MN":"Minnesota","MS":"Mississippi","MO":"Missouri","MT":"Montana","NE":"Nebraska","NV":"Nevada","NH":"New Hampshire",
-  "NJ":"New Jersey","NM":"New Mexico","NY":"New York","NC":"North Carolina","ND":"North Dakota","OH":"Ohio","OK":"Oklahoma",
-  "OR":"Oregon","PA":"Pennsylvania","RI":"Rhode Island","SC":"South Carolina","SD":"South Dakota","TN":"Tennessee","TX":"Texas",
-  "UT":"Utah","VT":"Vermont","VA":"Virginia","WA":"Washington","WV":"West Virginia","WI":"Wisconsin","WY":"Wyoming",
-  "DC":"District of Columbia"
-}
-
-want_state_name = None
-if state:
-  s = state.strip()
-  if len(s) == 2 and s.upper() in US_STATE:
-    want_state_name = US_STATE[s.upper()]
-  else:
-    want_state_name = s
-
-want_name = name.strip().lower()
-
-def score(r):
-  sc = 0
-  r_name = (r.get("name") or "").strip().lower()
-  r_admin1 = (r.get("admin1") or "").strip()
-  r_cc = (r.get("country_code") or "").strip().upper()
-
-  if r_name == want_name:
-    sc += 100
-  elif want_name and r_name and want_name in r_name:
-    sc += 30
-
-  if want_state_name and r_admin1 and r_admin1.lower() == want_state_name.lower():
-    sc += 80
-
-  if country and re.fullmatch(r"[A-Za-z]{2}", country) and r_cc == country.upper():
-    sc += 20
-
-  pop = r.get("population") or 0
-  try:
-    pop = int(pop)
-  except Exception:
-    pop = 0
-  sc += min(pop // 1000, 25)
-
-  return sc
-
-best = max(results, key=score)
-
-out = {
-  "lat": best.get("latitude"),
-  "lon": best.get("longitude"),
-  "timezone": best.get("timezone") or "auto"
-}
-print(json.dumps(out))
-PY
-)"
+geo_json=""
+if ! geo_json="$(node "$TARGET_DIR/shared/scripts/resolve-location.js" "$city")"; then
+  geo_json=""
+fi
 
 lat="$(echo "$geo_json" | python3 -c "import sys, json; s=sys.stdin.read().strip(); print(json.loads(s).get('lat','') if s else '')")"
 lon="$(echo "$geo_json" | python3 -c "import sys, json; s=sys.stdin.read().strip(); print(json.loads(s).get('lon','') if s else '')")"
@@ -358,7 +372,7 @@ if [[ -z "$lat" || -z "$lon" ]]; then
   exit 1
 fi
 
-cat <<EOF > "$TARGET_DIR/config.json"
+cat <<EOF > "$PI_TARGET_DIR/config.json"
 {
   "location": "$city",
   "lat": $lat,
@@ -387,18 +401,10 @@ cat <<EOF > "$TARGET_DIR/config.json"
 EOF
 
 # -----------------------------------------------------------------------------
-# Fonts
-# -----------------------------------------------------------------------------
-echo "Installing Roboto Mono font..."
-mkdir -p "$HOME/.local/share/fonts/RobotoMono"
-cp -f "$TARGET_DIR/fonts/RobotoMono/"*.ttf "$HOME/.local/share/fonts/RobotoMono/" 2>/dev/null || true
-fc-cache -fv >/dev/null || true
-
-# -----------------------------------------------------------------------------
 # Node dependencies
 # -----------------------------------------------------------------------------
 echo "Installing Node dependencies..."
-cd "$TARGET_DIR"
+cd "$PI_TARGET_DIR"
 if [[ -f package-lock.json ]]; then
   npm ci
 else
@@ -408,8 +414,8 @@ fi
 # -----------------------------------------------------------------------------
 # Ensure scripts are executable
 # -----------------------------------------------------------------------------
-chmod +x "$TARGET_DIR/scripts/"*.sh 2>/dev/null || true
-chmod +x "$TARGET_DIR/rotate_display.sh" 2>/dev/null || true
+chmod +x "$PI_TARGET_DIR/scripts/"*.sh 2>/dev/null || true
+chmod +x "$PI_TARGET_DIR/rotate_display.sh" 2>/dev/null || true
 
 # -----------------------------------------------------------------------------
 # X11 rotation: systemd --user service that calls repo rotate_display.sh
@@ -427,7 +433,7 @@ After=graphical-session.target graphical.target
 Type=oneshot
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=%h/.Xauthority
-ExecStart=%h/round-weather-display/rotate_display.sh
+ExecStart=%h/round-weather-display/targets/pi/rotate_display.sh
 TimeoutSec=120
 
 [Install]
@@ -445,7 +451,7 @@ EOF
 # Wayland helpers
 # -----------------------------------------------------------------------------
 create_wayland_helpers() {
-  cat <<'EOF' > "$TARGET_DIR/scripts/rotate_wayland.sh"
+  cat <<'EOF' > "$PI_TARGET_DIR/scripts/rotate_wayland.sh"
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -462,7 +468,7 @@ if [[ -n "${out:-}" ]]; then
   wlr-randr --output "$out" --transform 90 || true
 fi
 EOF
-  chmod +x "$TARGET_DIR/scripts/rotate_wayland.sh"
+  chmod +x "$PI_TARGET_DIR/scripts/rotate_wayland.sh"
 }
 
 # -----------------------------------------------------------------------------
@@ -513,9 +519,9 @@ XML
     grep -Fqx "$line" "$aut" 2>/dev/null || echo "$line" >> "$aut"
   }
 
-  add_line "bash \"$TARGET_DIR/scripts/rotate_wayland.sh\" &"
+  add_line "bash \"$PI_TARGET_DIR/scripts/rotate_wayland.sh\" &"
   add_line "wtype -M alt -M logo h -m alt -m logo &"
-  add_line "bash \"$TARGET_DIR/scripts/rwc.sh\" &"
+  add_line "bash \"$PI_TARGET_DIR/scripts/rwc.sh\" &"
 
   echo "labwc configuration updated:"
   echo "  $rc"
@@ -528,7 +534,7 @@ configure_x11_pm2() {
   echo "Installing PM2..."
   sudo npm install -g pm2
 
-  pm2 start "$TARGET_DIR/scripts/rwc.sh" --name "$APP_NAME" || true
+  pm2 start "$PI_TARGET_DIR/scripts/rwc.sh" --name "$APP_NAME" || true
 
   pm2StartupCmd="$(pm2 startup systemd -u "$USER" --hp "/home/$USER" | grep sudo || true)"
   if [[ -n "$pm2StartupCmd" ]]; then
@@ -558,9 +564,11 @@ echo "---------------------------------------"
 echo " Setup complete!"
 echo "---------------------------------------"
 echo "Installed to: $TARGET_DIR"
+echo "Hardware target: Raspberry Pi"
+echo "Pi runtime path: $PI_TARGET_DIR"
 echo "Branch: $REPO_BRANCH"
 echo "Message page:"
-echo "  http://$(hostname).local:3000/messages"
+  echo "  http://$(hostname).local:3000/messages"
 echo "If you ever re-run setup.sh, your previous config.json backups are in:"
 echo "  ~/${APP_NAME}-backups/"
 echo ""

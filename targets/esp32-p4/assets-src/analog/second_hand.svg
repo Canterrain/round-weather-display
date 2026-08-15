@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="372 118 16 332">
+  <path
+    d="M 380 120 L 382 144 L 381 382 L 379 382 L 378 144 Z M 377.5 386 L 382.5 386 L 381 446 L 379 446 Z"
+    fill="#d6e7f7"
+    fill-opacity="0.74"
+  />
+  <path
+    d="M 380 124 L 381.2 146 L 380.45 380 L 379.55 380 L 378.8 146 Z M 378.3 389 L 381.7 389 L 380.8 444 L 379.2 444 Z"
+    fill="#f9fbff"
+    fill-opacity="0.34"
+  />
+</svg>

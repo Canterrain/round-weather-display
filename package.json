@@ -1,21 +1,14 @@
 {
   "name": "round-weather-display",
-  "version": "1.0.1",
-  "description": "Under-cabinet weather and time display",
-  "main": "main.js",
+  "version": "1.1.0",
   "private": true,
+  "description": "Multi-target round weather display repository",
   "scripts": {
-    "start": "electron .",
-    "test:forecast": "node scripts/validate-forecast-representative.js"
-  },
-  "engines": {
-    "node": ">=18 <21",
-    "npm": ">=9"
-  },
-  "dependencies": {
-    "abort-controller": "^3.0.0",
-    "electron": "^28.3.3",
-    "express": "^4.22.1",
-    "node-fetch": "^2.7.0"
+    "start": "npm --prefix targets/pi start",
+    "start:pi": "npm --prefix targets/pi start",
+    "test:forecast": "npm --prefix targets/pi run test:forecast",
+    "test:location": "npm --prefix targets/pi run test:location",
+    "test:esp32-parity": "bash targets/esp32-p4/scripts/test-weather-parity.sh",
+    "test:all": "npm run test:forecast && npm run test:location && npm run test:esp32-parity"
   }
 }

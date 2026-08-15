@@ -1,0 +1,80 @@
+[
+  {
+    "name": "prefers matching state over larger city",
+    "query": "Loveland, OH, US",
+    "results": [
+      {
+        "name": "Loveland",
+        "admin1": "Colorado",
+        "country_code": "US",
+        "latitude": 40.3978,
+        "longitude": -105.0749,
+        "timezone": "America/Denver",
+        "population": 76000
+      },
+      {
+        "name": "Loveland",
+        "admin1": "Ohio",
+        "country_code": "US",
+        "latitude": 39.2689,
+        "longitude": -84.2638,
+        "timezone": "America/New_York",
+        "population": 13000
+      }
+    ],
+    "expectedResolvedName": "Loveland, Ohio, US",
+    "expectedTimezone": "America/New_York"
+  },
+  {
+    "name": "prefers matching country code",
+    "query": "Paris, FR",
+    "results": [
+      {
+        "name": "Paris",
+        "admin1": "Texas",
+        "country_code": "US",
+        "latitude": 33.6609,
+        "longitude": -95.5555,
+        "timezone": "America/Chicago",
+        "population": 24500
+      },
+      {
+        "name": "Paris",
+        "admin1": "Ile-de-France",
+        "country_code": "FR",
+        "latitude": 48.8534,
+        "longitude": 2.3488,
+        "timezone": "Europe/Paris",
+        "population": 2148000
+      }
+    ],
+    "expectedResolvedName": "Paris, Ile-de-France, FR",
+    "expectedTimezone": "Europe/Paris"
+  },
+  {
+    "name": "prefers exact state name",
+    "query": "Springfield, Illinois, US",
+    "results": [
+      {
+        "name": "Springfield",
+        "admin1": "Missouri",
+        "country_code": "US",
+        "latitude": 37.2153,
+        "longitude": -93.2982,
+        "timezone": "America/Chicago",
+        "population": 169200
+      },
+      {
+        "name": "Springfield",
+        "admin1": "Illinois",
+        "country_code": "US",
+        "latitude": 39.8017,
+        "longitude": -89.6436,
+        "timezone": "America/Chicago",
+        "population": 114400
+      }
+    ],
+    "expectedResolvedName": "Springfield, Illinois, US",
+    "expectedTimezone": "America/Chicago"
+  }
+]

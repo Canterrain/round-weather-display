@@ -1,0 +1,13 @@
+dependencies:
+  idf:
+    version: ">=5.5"
+  waveshare/esp32_p4_wifi6_touch_lcd_xc:
+    version: "^3.0.1"
+  espressif/esp_wifi_remote:
+    version: ">=0.10,<2.0"
+    rules:
+      - if: "target == esp32p4"
+  espressif/esp_hosted:
+    version: "~2"
+    rules:
+      - if: "target == esp32p4"
