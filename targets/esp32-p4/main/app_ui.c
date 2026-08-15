@@ -161,8 +161,7 @@
 #define FORECAST_ROW4_Y 600
 #define DAY_COUNT APP_FORECAST_DAYS
 #define FORECAST_ROW_COUNT 4
-#define SETUP_HOTSPOT_WIDTH 240
-#define SETUP_HOTSPOT_HEIGHT 220
+#define SETUP_SWIPE_TOP_ZONE_HEIGHT 90
 #define SETUP_KEYBOARD_BOTTOM_OFFSET -150
 #define SETUP_KEYBOARD_HEIGHT 200
 #define SETUP_KEYBOARD_WIDTH 620
@@ -998,7 +997,21 @@ static void style_textarea(lv_obj_t *textarea)
   lv_obj_set_style_pad_bottom(textarea, 14, 0);
   lv_obj_set_style_shadow_width(textarea, 0, 0);
   lv_obj_set_style_text_color(textarea, color_text_primary(), 0);
-  lv_obj_set_style_text_color(textarea, color_text_muted(), LV_PART_CURSOR);
+  /* LVGL's textarea only draws a visible cursor rect if LV_PART_CURSOR has
+   * a background -- text_color alone (the previous state here) has no
+   * visible effect except very subtly recoloring whatever character
+   * happens to already be under the cursor, which is invisible whenever
+   * the cursor is at the end of the text (i.e. while actively typing).
+   * These must be scoped to LV_STATE_FOCUSED (not bare LV_PART_CURSOR):
+   * lv_textarea starts its cursor blink animation unconditionally at
+   * construction with no focus-gating of its own, so an unscoped style
+   * would render identically in every textarea regardless of which one
+   * is actually focused. */
+  lv_obj_set_style_bg_opa(textarea, LV_OPA_COVER, LV_PART_CURSOR | LV_STATE_FOCUSED);
+  lv_obj_set_style_bg_color(textarea, color_accent(), LV_PART_CURSOR | LV_STATE_FOCUSED);
+  lv_obj_set_style_radius(textarea, 3, LV_PART_CURSOR | LV_STATE_FOCUSED);
+  lv_obj_set_style_text_color(textarea, color_panel(), LV_PART_CURSOR | LV_STATE_FOCUSED);
+  lv_obj_set_style_anim_duration(textarea, 600, LV_PART_CURSOR | LV_STATE_FOCUSED);
 }
 
 static void set_object_opa_anim_cb(void *obj, int32_t value)
@@ -1103,12 +1116,9 @@ static bool is_setup_overlay_visible(void)
   return s_ui.setup_overlay != NULL && !lv_obj_has_flag(s_ui.setup_overlay, LV_OBJ_FLAG_HIDDEN);
 }
 
-static bool is_setup_hotspot(const lv_point_t *point)
+static bool is_top_edge_swipe_start(const lv_point_t *point)
 {
-  return point != NULL
-      && point->x >= (BSP_LCD_H_RES - SETUP_HOTSPOT_WIDTH)
-      && point->y >= 0
-      && point->y <= SETUP_HOTSPOT_HEIGHT;
+  return point != NULL && point->y <= SETUP_SWIPE_TOP_ZONE_HEIGHT;
 }
 
 static void update_setup_scan_status(const char *text, lv_color_t color)
@@ -2506,18 +2516,18 @@ static void gesture_layer_event_cb(lv_event_t *event)
     return;
   }
 
-  if (code == LV_EVENT_LONG_PRESSED) {
-    if (is_setup_hotspot(&point)) {
-      s_ui.gesture_tracking = false;
-      open_setup_overlay();
-    }
-    return;
-  }
-
   if ((code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) && s_ui.gesture_tracking) {
     int delta_x = point.x - s_ui.gesture_start.x;
     int delta_y = point.y - s_ui.gesture_start.y;
     s_ui.gesture_tracking = false;
+
+    if (!is_setup_overlay_visible()
+        && is_top_edge_swipe_start(&s_ui.gesture_start)
+        && delta_y >= SWIPE_THRESHOLD_PX
+        && (LV_ABS(delta_y) * 10) > (LV_ABS(delta_x) * SWIPE_AXIS_RATIO_X10)) {
+      open_setup_overlay();
+      return;
+    }
     if (s_ui.current_view == APP_VIEW_MESSAGE
         && LV_ABS(delta_x) < 12
         && LV_ABS(delta_y) < 12
@@ -3068,7 +3078,6 @@ static void build_gesture_layer(lv_obj_t *parent)
   lv_obj_set_style_pad_all(s_ui.gesture_layer, 0, 0);
   lv_obj_add_flag(s_ui.gesture_layer, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(s_ui.gesture_layer, gesture_layer_event_cb, LV_EVENT_PRESSED, NULL);
-  lv_obj_add_event_cb(s_ui.gesture_layer, gesture_layer_event_cb, LV_EVENT_LONG_PRESSED, NULL);
   lv_obj_add_event_cb(s_ui.gesture_layer, gesture_layer_event_cb, LV_EVENT_RELEASED, NULL);
   lv_obj_add_event_cb(s_ui.gesture_layer, gesture_layer_event_cb, LV_EVENT_PRESS_LOST, NULL);
 }
