@@ -27,6 +27,9 @@
 #include "assets/digital_stage_night.h"
 #include "assets/forecast_tomorrow_frame_day.h"
 #include "assets/forecast_tomorrow_frame_night.h"
+#include "assets/lv_font_clock_time_144.h"
+#include "assets/lv_font_temp_102.h"
+#include "assets/lv_font_temp_105.h"
 #include "assets/round_stage_day.h"
 #include "assets/round_stage_night.h"
 #include "assets/weather_icon_clear_day.h"
@@ -97,18 +100,17 @@
 #define ANALOG_TEMP_BLOCK_WIDTH 300
 #define ANALOG_TEMP_BLOCK_TOP 472
 #define ANALOG_TEMP_LABEL_HEIGHT 116
-/* Reference uses a 104px temp against a 48px dial numeral; 104/48*256 = 555. */
-#define ANALOG_TEMP_SCALE 560
+/* This label used to render at lv_font_montserrat_48 stretched ~2.19x via a
+ * style transform_scale -- upscaling an already-rasterized bitmap glyph,
+ * which visibly blurs it. It now uses lv_font_temp_105, a custom font
+ * generated at its true 105px render size (see
+ * targets/esp32-p4/scripts/generate-custom-fonts.sh), with no scale
+ * transform. PIVOT_X/Y and EXT_DRAW_MARGIN below were tuned to compensate
+ * for that scale transform's effect on positioning/clipping; they're inert
+ * no-ops now that there's no scale, and left in place since removing them
+ * isn't necessary and risks nothing by staying. */
 #define ANALOG_TEMP_PIVOT_X 160
-/* Scaling about the pivot also moves the glyph. montserrat_48 puts the digit
- * top 9px into the line box, so at 2.19x a pivot of 28 lifted the text ~27px
- * above where the reference draws it. 6 keeps the block top at 472 (matching
- * the reference) while landing the glyph at the same place. */
 #define ANALOG_TEMP_PIVOT_Y 6
-/* LVGL's default ext_draw_size for a scaled label is only font_h/4 (~13px for
- * montserrat_48), far short of what this pivot/scale combo pushes glyphs past
- * the label's own box (up to ~190px). Without this, LVGL clips the paint area
- * before the parent's overflow-visible flag ever comes into play. */
 #define ANALOG_TEMP_LABEL_EXT_DRAW_MARGIN 200
 #define EDGE_INDICATOR_PULSE_MIN_OPA 184
 #define EDGE_INDICATOR_PULSE_MAX_OPA 255
@@ -122,9 +124,15 @@
 #define FACE_CONTENT_SIZE 780
 #define DIGITAL_DAY_TOP 80
 #define DIGITAL_DATE_TOP 115
-#define DIGITAL_TIME_TOP 150
+/* 150 was correct for the old scaled lv_font_montserrat_48 (line_height 52,
+ * base_line 9, scaled 3x -> effective line_height 156 / base_line 27, baseline
+ * at 150+156-27=279). lv_font_clock_time_144 -- generated from only digits
+ * and ':', with no descenders/tall accents to reserve room for -- reports a
+ * much tighter line_height 104 / base_line 2, landing the baseline at
+ * 150+104-2=252: 27px higher, which read as the time floating away from the
+ * PM/divider line below it. +27 restores the original baseline position. */
+#define DIGITAL_TIME_TOP 177
 #define DIGITAL_TIME_WIDTH 620
-#define DIGITAL_TIME_SCALE 768
 #define DIGITAL_MERIDIEM_TOP 268
 #define DIGITAL_TIME_GAP 14
 #define DIGITAL_DIVIDER_WIDTH 500
@@ -2628,14 +2636,11 @@ static void build_analog_view(lv_obj_t *parent)
   lv_obj_set_style_pad_row(s_ui.analog_temp_container, 8, 0);
 
   s_ui.analog_temp_label = create_label(
-    s_ui.analog_temp_container, &lv_font_montserrat_48, color_temp(), LV_TEXT_ALIGN_CENTER, "52°"
+    s_ui.analog_temp_container, &lv_font_temp_105, color_temp(), LV_TEXT_ALIGN_CENTER, "52°"
   );
   lv_obj_set_width(s_ui.analog_temp_label, LV_PCT(100));
   lv_obj_set_height(s_ui.analog_temp_label, ANALOG_TEMP_LABEL_HEIGHT);
   lv_obj_set_style_text_letter_space(s_ui.analog_temp_label, -2, 0);
-  lv_obj_set_style_transform_scale(s_ui.analog_temp_label, ANALOG_TEMP_SCALE, 0);
-  lv_obj_set_style_transform_pivot_x(s_ui.analog_temp_label, ANALOG_TEMP_PIVOT_X, 0);
-  lv_obj_set_style_transform_pivot_y(s_ui.analog_temp_label, ANALOG_TEMP_PIVOT_Y, 0);
   lv_obj_set_style_transform_width(s_ui.analog_temp_label, ANALOG_TEMP_LABEL_EXT_DRAW_MARGIN, 0);
   lv_obj_set_style_transform_height(s_ui.analog_temp_label, ANALOG_TEMP_LABEL_EXT_DRAW_MARGIN, 0);
 
@@ -2729,14 +2734,18 @@ static void build_digital_view(lv_obj_t *parent)
   lv_obj_align(s_ui.digital_date_label, LV_ALIGN_TOP_MID, 0, DIGITAL_DATE_TOP);
   lv_obj_set_style_text_letter_space(s_ui.digital_date_label, 2, 0);
 
+  /* Previously lv_font_montserrat_48 stretched 3x via transform_scale --
+   * upscaling an already-rasterized bitmap glyph, which visibly blurred it.
+   * Now uses lv_font_clock_time_144, generated at its true 144px render
+   * size (targets/esp32-p4/scripts/generate-custom-fonts.sh), no scale
+   * transform needed. layout_digital_time_group() reads the transform
+   * scale style dynamically (lv_obj_get_style_transform_scale_x_safe), so
+   * it adapts on its own now that none is set (default LV_SCALE_NONE). */
   s_ui.digital_time_label = create_label(
-    digital_face, &lv_font_montserrat_48, color_text_primary(), LV_TEXT_ALIGN_CENTER, "10:42"
+    digital_face, &lv_font_clock_time_144, color_text_primary(), LV_TEXT_ALIGN_CENTER, "10:42"
   );
   lv_obj_set_width(s_ui.digital_time_label, LV_SIZE_CONTENT);
   lv_obj_set_style_text_letter_space(s_ui.digital_time_label, -2, 0);
-  lv_obj_set_style_transform_scale(s_ui.digital_time_label, DIGITAL_TIME_SCALE, 0);
-  lv_obj_set_style_transform_pivot_x(s_ui.digital_time_label, 0, 0);
-  lv_obj_set_style_transform_pivot_y(s_ui.digital_time_label, 0, 0);
 
   s_ui.digital_meridiem_label = create_label(
     digital_face, &lv_font_montserrat_24, color_accent(), LV_TEXT_ALIGN_CENTER, "AM"
@@ -2766,15 +2775,17 @@ static void build_digital_view(lv_obj_t *parent)
   lv_obj_set_style_transform_width(s_ui.digital_current_panel, 100, 0);
   lv_obj_set_style_transform_height(s_ui.digital_current_panel, 40, 0);
 
+  /* Previously lv_font_montserrat_48 stretched ~2.13x via transform_scale --
+   * upscaling an already-rasterized bitmap glyph, which visibly blurred it.
+   * Now uses lv_font_temp_102, generated at its true 102px render size
+   * (targets/esp32-p4/scripts/generate-custom-fonts.sh), no scale transform
+   * needed. */
   s_ui.digital_temp_label = create_label(
-    s_ui.digital_current_panel, &lv_font_montserrat_48, color_text_primary(), LV_TEXT_ALIGN_LEFT, "52°"
+    s_ui.digital_current_panel, &lv_font_temp_102, color_text_primary(), LV_TEXT_ALIGN_LEFT, "52°"
   );
   lv_obj_set_width(s_ui.digital_temp_label, 200);
   lv_obj_align(s_ui.digital_temp_label, LV_ALIGN_LEFT_MID, DIGITAL_CURRENT_TEMP_LEFT, 0);
   lv_obj_set_style_text_letter_space(s_ui.digital_temp_label, -2, 0);
-  lv_obj_set_style_transform_scale(s_ui.digital_temp_label, 544, 0);
-  lv_obj_set_style_transform_pivot_x(s_ui.digital_temp_label, 0, 0);
-  lv_obj_set_style_transform_pivot_y(s_ui.digital_temp_label, 28, 0);
 
   s_ui.digital_current_icon = lv_image_create(s_ui.digital_current_panel);
   lv_image_set_src(s_ui.digital_current_icon, weather_icon_image_for_name(weather_icon_fallback_name()));
