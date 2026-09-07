@@ -87,7 +87,8 @@ body.is-night .clock-stage {
   transition: opacity 180ms ease;
 }
 
-.mode-message .status-stack {
+.mode-message .status-stack,
+.mode-wifi .status-stack {
   opacity: 0;
 }
 
@@ -119,7 +120,8 @@ body.is-night .clock-stage {
 .mode-clock .view-clock,
 .mode-digital .view-digital,
 .mode-forecast .view-forecast,
-.mode-message .view-message {
+.mode-message .view-message,
+.mode-wifi .view-wifi {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
@@ -211,6 +213,33 @@ body.is-night .clock-stage {
   inset: 18px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.wifi-face {
+  position: relative;
+  width: 760px;
+  height: 760px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(60, 79, 111, 0.28) 0%, rgba(19, 26, 38, 0.8) 38%, rgba(10, 14, 22, 0.96) 72%, rgba(2, 4, 8, 0.98) 100%);
+  box-shadow:
+    inset 0 0 0 2px var(--face-edge),
+    inset 0 0 120px var(--face-glow),
+    0 20px 50px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 70px 90px 50px;
+  box-sizing: border-box;
+}
+
+.wifi-face::before {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  pointer-events: none;
 }
 
 .message-edge-indicator {
@@ -661,6 +690,199 @@ body.is-night .clock-stage {
   color: rgba(237, 243, 252, 0.54);
 }
 
+.wifi-title {
+  font-size: 34px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  color: rgba(246, 250, 255, 0.94);
+  text-align: center;
+}
+
+.wifi-status-line {
+  margin-top: 8px;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(228, 236, 248, 0.68);
+  text-align: center;
+}
+
+.wifi-network-list {
+  width: 100%;
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.wifi-network-list[hidden] {
+  display: none;
+}
+
+.wifi-network-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  box-sizing: border-box;
+  font-size: 20px;
+  font-weight: 550;
+  color: rgba(245, 249, 255, 0.92);
+  transition: background 120ms ease;
+}
+
+.wifi-network-row:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.wifi-network-row-signal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(228, 236, 248, 0.6);
+}
+
+.wifi-network-empty {
+  padding: 24px 0;
+  text-align: center;
+  font-size: 18px;
+  color: rgba(228, 236, 248, 0.5);
+}
+
+.wifi-password-panel {
+  width: 100%;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.wifi-password-panel[hidden] {
+  display: none;
+}
+
+.wifi-selected-ssid {
+  font-size: 24px;
+  font-weight: 600;
+  color: rgba(246, 250, 255, 0.94);
+  text-align: center;
+}
+
+.wifi-password-row {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+}
+
+.wifi-password-input {
+  flex: 1;
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(248, 251, 255, 0.96);
+  font: inherit;
+  font-size: 20px;
+  box-sizing: border-box;
+}
+
+.wifi-icon-button,
+.wifi-primary-button,
+.wifi-secondary-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 22px;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.wifi-icon-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(248, 251, 255, 0.9);
+}
+
+.wifi-primary-button {
+  background: linear-gradient(180deg, rgba(107, 155, 255, 0.96), rgba(68, 116, 214, 0.96));
+  color: white;
+  flex: 1;
+}
+
+.wifi-secondary-button {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(248, 251, 255, 0.9);
+  flex: 1;
+}
+
+.wifi-done-button {
+  margin-top: 20px;
+  flex: none;
+  padding: 12px 32px;
+}
+
+.wifi-action-row {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+}
+
+.wifi-connect-error {
+  width: 100%;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 550;
+  color: var(--night-shift-status, rgba(255, 140, 140, 0.9));
+}
+
+.wifi-keyboard {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.wifi-keyboard-row {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.wifi-key {
+  min-width: 42px;
+  padding: 10px 0;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.09);
+  color: rgba(248, 251, 255, 0.94);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 550;
+  text-align: center;
+}
+
+.wifi-key:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.wifi-key-wide {
+  min-width: 90px;
+}
+
+.wifi-key-space {
+  min-width: 220px;
+}
+
 .dial-svg {
   position: absolute;
   inset: 0;
@@ -905,7 +1127,8 @@ body.night-shift-red {
 
 body.night-shift-red .clock-face,
 body.night-shift-red .forecast-face,
-body.night-shift-red .message-face {
+body.night-shift-red .message-face,
+body.night-shift-red .wifi-face {
   background:
     radial-gradient(circle at 50% 46%, rgba(82, 30, 30, 0.18) 0%, rgba(27, 11, 11, 0.78) 38%, rgba(11, 6, 6, 0.96) 72%, rgba(3, 1, 1, 0.99) 100%);
   box-shadow:
@@ -953,7 +1176,9 @@ body.night-shift-red .forecast-tomorrow-label,
 body.night-shift-red .forecast-tomorrow-temps,
 body.night-shift-red .forecast-day,
 body.night-shift-red .message-title,
-body.night-shift-red .message-text {
+body.night-shift-red .message-text,
+body.night-shift-red .wifi-title,
+body.night-shift-red .wifi-selected-ssid {
   color: rgba(236, 192, 192, 0.9);
 }
 
@@ -968,7 +1193,9 @@ body.night-shift-red .forecast-temps,
 body.night-shift-red .message-meta,
 body.night-shift-red .message-dismiss,
 body.night-shift-red .message-empty,
-body.night-shift-red .status-line-round {
+body.night-shift-red .status-line-round,
+body.night-shift-red .wifi-status-line,
+body.night-shift-red .wifi-network-row-signal {
   color: rgba(193, 122, 122, 0.82);
 }
 

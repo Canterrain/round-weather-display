@@ -11,7 +11,8 @@ const VIEW_MODES = {
   CLOCK: 'clock',
   DIGITAL: 'digital',
   FORECAST: 'forecast',
-  MESSAGE: 'message'
+  MESSAGE: 'message',
+  WIFI: 'wifi'
 };
 
 let currentViewMode = VIEW_MODES.CLOCK;
@@ -140,7 +141,8 @@ function setViewMode(mode) {
   const digitalView = document.querySelector('.view-digital');
   const forecastView = document.querySelector('.view-forecast');
   const messageView = document.querySelector('.view-message');
-  if (!appShell || !clockView || !digitalView || !forecastView || !messageView) return;
+  const wifiView = document.querySelector('.view-wifi');
+  if (!appShell || !clockView || !digitalView || !forecastView || !messageView || !wifiView) return;
 
   if (mode === VIEW_MODES.FORECAST) {
     currentViewMode = VIEW_MODES.FORECAST;
@@ -148,6 +150,8 @@ function setViewMode(mode) {
     currentViewMode = VIEW_MODES.DIGITAL;
   } else if (mode === VIEW_MODES.MESSAGE) {
     currentViewMode = VIEW_MODES.MESSAGE;
+  } else if (mode === VIEW_MODES.WIFI) {
+    currentViewMode = VIEW_MODES.WIFI;
   } else {
     currentViewMode = VIEW_MODES.CLOCK;
   }
@@ -160,10 +164,12 @@ function setViewMode(mode) {
   appShell.classList.toggle('mode-digital', currentViewMode === VIEW_MODES.DIGITAL);
   appShell.classList.toggle('mode-forecast', currentViewMode === VIEW_MODES.FORECAST);
   appShell.classList.toggle('mode-message', currentViewMode === VIEW_MODES.MESSAGE);
+  appShell.classList.toggle('mode-wifi', currentViewMode === VIEW_MODES.WIFI);
   clockView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.CLOCK));
   digitalView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.DIGITAL));
   forecastView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.FORECAST));
   messageView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.MESSAGE));
+  wifiView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.WIFI));
 }
 
 function setupSwipeNavigation() {
@@ -185,6 +191,20 @@ function setupSwipeNavigation() {
     const deltaY = y - startY;
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
+
+    // Swipe-down-from-the-very-top-edge always opens WiFi setup, regardless
+    // of the current view -- mirrors the same gesture just added to the
+    // ESP32-P4's setup screen, for consistency across both targets. Checked
+    // first so it can't be confused with the ordinary view-switching swipes
+    // below (which can happen anywhere else on the face).
+    const WIFI_TOP_EDGE_BAND_PX = 90;
+    const WIFI_SWIPE_DOWN_THRESHOLD_PX = 70;
+    if (startY <= WIFI_TOP_EDGE_BAND_PX && deltaY >= WIFI_SWIPE_DOWN_THRESHOLD_PX && absY > absX) {
+      setViewMode(VIEW_MODES.WIFI);
+      startX = null;
+      startY = null;
+      return;
+    }
 
     if (absX >= 70 && absX > absY * 1.5) {
       if (currentViewMode === VIEW_MODES.CLOCK) {

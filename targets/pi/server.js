@@ -5,6 +5,9 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const dgram = require('dgram');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
 const { pickRepresentativeForecastCode } = require('../../shared/logic/forecast-representative');
 const {
   buildGeocodeSearchUrl,
@@ -30,6 +33,9 @@ const DISCOVERY_TIMEOUT_MS = 3000;
 const HEARTBEAT_INTERVAL_MS = 5000;
 const HEARTBEAT_STALE_MS = 15000;
 const DISCOVERY_VERSION = 1;
+const WIFI_STATUS_TIMEOUT_MS = 8000;
+const WIFI_SCAN_TIMEOUT_MS = 15000;
+const WIFI_CONNECT_TIMEOUT_MS = 25000;
 
 function loadConfig() {
   if (!fs.existsSync(configPath)) return null;
@@ -147,6 +153,219 @@ function getLocalIpv4Address() {
   if (candidates.length > 0) return candidates[0].address;
 
   return '127.0.0.1';
+}
+
+// --- WiFi manager (nmcli-backed) ---
+//
+// Lets the device recover from a lost WiFi connection directly from its own
+// touchscreen, without needing another device or physical keyboard/monitor.
+// All commands go through execFile with an argument array (never a shell
+// string) so a network name or password can never be interpreted as shell
+// syntax.
+
+// nmcli's terse mode (-t) separates fields with ':' and escapes any literal
+// ':' or '\' inside a field as '\:' / '\\'. A plain split(':') would break on
+// an SSID that itself contains a colon, so split only on *unescaped* colons.
+function parseNmcliTerseColumns(line) {
+  return line
+    .split(/(?<!\\):/)
+    .map((field) => field.replace(/\\:/g, ':').replace(/\\\\/g, '\\'));
+}
+
+// `nmcli device show <iface>` prints one "KEY:VALUE" pair per line. Keys
+// never contain a colon, so (unlike the columnar parse above) splitting on
+// the first colon only is correct and simpler.
+function parseNmcliKeyValueLine(line) {
+  const separatorIndex = line.indexOf(':');
+  if (separatorIndex === -1) return [line, ''];
+  return [line.slice(0, separatorIndex), line.slice(separatorIndex + 1)];
+}
+
+// The WiFi interface name (e.g. "wlan0") doesn't change at runtime, so cache
+// it after the first successful resolution -- every caller below (status,
+// scan, connect, and the cheap link-status check the renderer polls
+// continuously) goes through this function, and re-spawning `nmcli` just to
+// re-learn a name that never changes would be pure waste.
+let cachedWifiInterfaceName = null;
+
+async function getWifiInterfaceName() {
+  if (cachedWifiInterfaceName) return cachedWifiInterfaceName;
+
+  const { stdout } = await execFileAsync(
+    'nmcli',
+    ['-t', '-f', 'DEVICE,TYPE', 'device', 'status'],
+    { timeout: WIFI_STATUS_TIMEOUT_MS }
+  );
+
+  for (const line of stdout.trim().split('\n')) {
+    if (!line) continue;
+    const [device, type] = parseNmcliTerseColumns(line);
+    if (type === 'wifi') {
+      cachedWifiInterfaceName = device;
+      return device;
+    }
+  }
+  return null;
+}
+
+// A near-zero-cost alternative to getWifiStatus() for the renderer's
+// always-on background poll (used only to decide whether to auto-surface
+// the WiFi screen -- see wifi.js). getWifiStatus() shells out to `nmcli
+// device show`, which spawns a process and round-trips D-Bus to
+// NetworkManager; doing that every few seconds forever, from every screen,
+// is a real continuous CPU/IO cost on something as modest as a Pi Zero 2 W,
+// and was the actual cause of reported UI-wide sluggishness. Checking
+// whether the interface already has a real IPv4 address is a pure
+// in-process check (no subprocess) and is a perfectly good proxy for "is
+// this device meaningfully connected" for auto-surface purposes -- the
+// accurate SSID/state detail from getWifiStatus() is still used, just only
+// while the WiFi screen itself is actually open.
+async function getWifiLinkStatus() {
+  const iface = await getWifiInterfaceName();
+  if (!iface) return { connected: false, interface: null };
+
+  const addresses = os.networkInterfaces()[iface] || [];
+  const connected = addresses.some((addr) => addr && addr.family === 'IPv4' && !addr.internal);
+  return { connected, interface: iface };
+}
+
+async function getWifiStatus() {
+  const iface = await getWifiInterfaceName();
+  if (!iface) {
+    return { connected: false, ssid: null, ip: null, interface: null };
+  }
+
+  const { stdout } = await execFileAsync(
+    'nmcli',
+    ['-t', '-f', 'GENERAL.STATE,GENERAL.CONNECTION,IP4.ADDRESS', 'device', 'show', iface],
+    { timeout: WIFI_STATUS_TIMEOUT_MS }
+  );
+
+  let state = '';
+  let connection = '';
+  let ip = null;
+  for (const line of stdout.trim().split('\n')) {
+    if (!line) continue;
+    const [key, value] = parseNmcliKeyValueLine(line);
+    if (key === 'GENERAL.STATE') state = value;
+    else if (key === 'GENERAL.CONNECTION') connection = value;
+    else if (key.startsWith('IP4.ADDRESS')) ip = value.split('/')[0] || null;
+  }
+
+  return {
+    connected: state.startsWith('100'),
+    ssid: connection && connection !== '--' ? connection : null,
+    ip,
+    interface: iface
+  };
+}
+
+async function scanWifiNetworks() {
+  const iface = await getWifiInterfaceName();
+  if (!iface) return [];
+
+  const { stdout } = await execFileAsync(
+    'nmcli',
+    ['-t', '-f', 'SSID,SIGNAL,SECURITY', 'device', 'wifi', 'list', '--rescan', 'yes', 'ifname', iface],
+    { timeout: WIFI_SCAN_TIMEOUT_MS }
+  );
+
+  const bestBySsid = new Map();
+  for (const line of stdout.trim().split('\n')) {
+    if (!line) continue;
+    const [ssid, signalText, security] = parseNmcliTerseColumns(line);
+    if (!ssid) continue; // hidden/blank SSID -- not selectable in this UI
+
+    const signal = Number(signalText) || 0;
+    const existing = bestBySsid.get(ssid);
+    if (!existing || signal > existing.signal) {
+      bestBySsid.set(ssid, { ssid, signal, secured: security.trim().length > 0 });
+    }
+  }
+
+  return [...bestBySsid.values()].sort((a, b) => b.signal - a.signal);
+}
+
+function normalizeWifiConnectPayload(body = {}) {
+  const ssid = typeof body.ssid === 'string' ? body.ssid.trim() : '';
+  const password = typeof body.password === 'string' ? body.password : '';
+
+  if (!ssid) {
+    throw new Error('Network name is required');
+  }
+
+  if (ssid.length > 32) {
+    throw new Error('Network name must be 32 characters or fewer');
+  }
+
+  if (password && password.length < 8) {
+    throw new Error('Password must be at least 8 characters');
+  }
+
+  return { ssid, password };
+}
+
+async function connectToWifiNetwork(ssid, password) {
+  let iface;
+  try {
+    iface = await getWifiInterfaceName();
+  } catch (error) {
+    // Same leak risk as below applies here too -- getWifiInterfaceName's own
+    // execFile call can reject with a raw system error (e.g. "spawn nmcli
+    // ENOENT" when nmcli isn't installed at all) that must never reach the
+    // caller unsanitized.
+    if (error.code === 'ENOENT') {
+      throw new Error('WiFi management is not available on this device');
+    }
+    throw new Error('Could not determine the WiFi adapter');
+  }
+
+  if (!iface) {
+    throw new Error('No WiFi adapter found');
+  }
+
+  const args = ['device', 'wifi', 'connect', ssid, 'ifname', iface];
+  if (password) {
+    args.push('password', password);
+  }
+
+  try {
+    await execFileAsync('nmcli', args, { timeout: WIFI_CONNECT_TIMEOUT_MS });
+  } catch (error) {
+    // execFile's rejection includes the full argv -- including the plaintext
+    // password -- in error.cmd/error.message. Never let that object escape
+    // this function or reach a log/response; only nmcli's own stderr (which
+    // never echoes the password back) is safe to inspect.
+    const stderr = typeof error.stderr === 'string' ? error.stderr : '';
+    if (/secrets were required|802-11-wireless-security/i.test(stderr)) {
+      throw new Error('Incorrect password');
+    }
+    if (error.killed || error.code === 'ETIMEDOUT') {
+      throw new Error('Connection attempt timed out');
+    }
+    if (error.code === 'ENOENT') {
+      throw new Error('WiFi management is not available on this device');
+    }
+    throw new Error('Could not join network');
+  }
+}
+
+// Restricts a route to requests originating from this same device (the
+// kiosk's own Electron window, or a local curl/SSH session) -- unlike the
+// messaging API, which intentionally needs LAN reachability from other
+// devices, there's no legitimate reason for another device on the network to
+// be able to scan for or join WiFi networks on this one, and the server
+// binds all interfaces (app.listen(PORT) with no host) for the messaging
+// feature's sake.
+function requireLocalhost(req, res, next) {
+  const remoteAddress = req.socket.remoteAddress || '';
+  const isLocal = remoteAddress === '127.0.0.1'
+    || remoteAddress === '::1'
+    || remoteAddress === '::ffff:127.0.0.1';
+  if (!isLocal) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
 }
 
 function nowIso() {
@@ -858,6 +1077,56 @@ app.post('/api/messages/sync', (req, res) => {
   writeMessagesStore(store);
 
   res.json({ ok: true, count: store.messages.length });
+});
+
+app.get('/api/wifi/status', requireLocalhost, async (req, res) => {
+  try {
+    res.json(await getWifiStatus());
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return res.json({ connected: false, ssid: null, ip: null, interface: null, error: 'nmcli not available' });
+    }
+    console.error('WiFi status check failed:', error.message);
+    res.status(500).json({ error: 'Could not check WiFi status' });
+  }
+});
+
+// Cheap enough to poll continuously in the background (see getWifiLinkStatus
+// above) -- used for the always-on auto-surface check. GET /api/wifi/status
+// remains the accurate, nmcli-backed source of truth used only while the
+// WiFi screen itself is open.
+app.get('/api/wifi/link-status', requireLocalhost, async (req, res) => {
+  try {
+    res.json(await getWifiLinkStatus());
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return res.json({ connected: false, interface: null, error: 'nmcli not available' });
+    }
+    console.error('WiFi link status check failed:', error.message);
+    res.status(500).json({ error: 'Could not check WiFi link status' });
+  }
+});
+
+app.get('/api/wifi/scan', requireLocalhost, async (req, res) => {
+  try {
+    res.json({ networks: await scanWifiNetworks() });
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return res.json({ networks: [], error: 'nmcli not available' });
+    }
+    console.error('WiFi scan failed:', error.message);
+    res.status(500).json({ error: 'Could not scan for networks' });
+  }
+});
+
+app.post('/api/wifi/connect', requireLocalhost, async (req, res) => {
+  try {
+    const { ssid, password } = normalizeWifiConnectPayload(req.body);
+    await connectToWifiNetwork(ssid, password);
+    res.json({ ok: true, status: await getWifiStatus() });
+  } catch (error) {
+    res.status(400).json({ error: error.message || 'Could not join network' });
+  }
 });
 
 app.get('/weather', async (req, res) => {
