@@ -82,7 +82,7 @@ script.
 
 ## Raspberry Pi Requirements
 
-- Preverred: [Raspberry Pi Zero 2](https://seeedtechnologycoltd.sjv.io/QYvqYA) (affiliate)
+- Preferred: [Raspberry Pi Zero 2](https://seeedtechnologycoltd.sjv.io/QYvqYA) (affiliate)
 - [Raspberry Pi 4](https://amzn.to/40en56s) (affiliate)
 - or
 - [Raspberry Pi 5](https://amzn.to/3ZEJUQH) (affiliate)
@@ -91,7 +91,7 @@ script.
 
 ## ESP32-P4 Requirements
 
-- [ESP21 Waveshare](https://amzn.to/4csETBI) (affiliate)
+- [ESP32-P4 Waveshare](https://amzn.to/4csETBI) (affiliate)
 - A [flat USB-C data cable](https://amzn.to/4gJS7uQ) (affiliate) and a computer to flash it from (no OTA yet) — just a browser
   ([Chrome/Edge/Firefox](https://canterrain.github.io/round-weather-display/)) if using the browser-flashing page,
   or ESP-IDF `v5.5.5` (installed automatically by `targets/esp32-p4/scripts/setup.sh`) if building from source
@@ -179,7 +179,7 @@ Both targets implement the full product spec:
 - Analog, digital, forecast, and message screens with matched layout/behavior across targets.
 - Live weather via Open-Meteo.
 - Shared house messaging: any clock (Pi or ESP32-P4) can compose and receive messages, with UDP-based hub discovery/election so multiple clocks on the same LAN coordinate automatically.
-- On-device WiFi and location setup on the ESP32-P4 (touchscreen: network scan, on-screen keyboard, location geocoding); the Pi path is configured through `setup.sh`.
+- On-device WiFi and location setup on the ESP32-P4 (touchscreen: network scan, on-screen keyboard, location geocoding). Initial Pi setup (location, room name, etc.) is still configured through `setup.sh`, but the Pi also has an on-device WiFi scan/join screen (swipe down from the top of the clock face) for recovering a lost connection directly from the touchscreen, with no other device needed.
 - `shared/spec/product-spec.md` is the frozen behavior/UI contract both targets are built against.
 
 The ESP32-P4 target has no wireless OTA yet — firmware updates are a USB reflash, either via the
