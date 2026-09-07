@@ -1,51 +1,58 @@
 # Round Weather Display
+
 ![Round Clock Weather Display](https://github.com/user-attachments/assets/ffa7de12-8ffc-4f03-94cb-a3bf73f059a8)
 
-A round clock and weather dashboard designed for Raspberry Pi or ESP32 with Waveshare displays. The UI pulls real-time weather data from Open-Meteo and works great nightsands or as a minimalist desk display.
+A round clock and weather display for your nightstand, desk, or anywhere you want to keep an eye on the time and weather.
 
-## Current Targets
+Pick an analog or digital clock face, swipe over to see the forecast, or leave a message for someone at home. Weather comes from Open-Meteo, with no API key needed.
 
-- `targets/pi/`
-  Working runtime using Electron + Express on Raspberry Pi OS.
-- `targets/esp32-p4/`
-  Native ESP-IDF + LVGL firmware for the 800x800 round ESP32-P4 board (Waveshare `ESP32-P4-WIFI6-Touch-LCD-3.4C`). Analog/digital/forecast/message screens, live weather, on-device WiFi and location setup, and shared house messaging across multiple clocks all work; see `targets/esp32-p4/README.md` for details.
-- `shared/`
-  Shared assets, shared logic, and the frozen product specification that both targets should follow.
+You can build it with a Raspberry Pi and round HDMI touchscreen, or use the Waveshare ESP32-P4 board with its own round display. Both versions have the same clock faces, weather, and household messaging.
 
-## Features
+## ✨ Features
 
-- Analog round clock face with configurable 12h or 24h time
-- Digital home screen
-- Swipeable forecast screen
-- Local message screen with phone-accessible message entry
-- Shared household messaging mode for multiple clocks on the same LAN
-- Real-time weather via Open-Meteo
-- Representative forecast icons that reflect how most of the day looks
-- Stale-weather indication and conservative clock-paused detection
-- Optional red night shift mode
-- Shared SVG weather icon set for all targets
+- Analog and digital clock faces
+- 12-hour or 24-hour time, with an optional leading zero
+- Current weather and a five-day forecast
+- Forecast icons that reflect how most of the day looks
+- A small indicator when the weather data is out of date
+- Optional red nightshift mode for a dimmer nighttime display
+- Household messages you can send from your phone or computer
+- Shared messaging between multiple clocks, including a mix of Pi and ESP32-P4 builds
+- WiFi setup from the touchscreen if you need to reconnect
+- Automatic startup when you power it on
 
-## Repo Layout
+## 🖥 Hardware
 
-| Path | Purpose |
-| --- | --- |
-| `setup.sh` | Top-level installer entrypoint |
-| `shared/assets/` | Shared icons and image assets |
-| `shared/logic/forecast-representative.js` | Shared forecast-icon heuristic |
-| `shared/spec/product-spec.md` | Frozen behavior and UI contract for both targets |
-| `shared/spec/config.example.json` | Canonical config example |
-| `targets/pi/` | Raspberry Pi app runtime |
-| `targets/pi/public/` | Pi UI markup, styles, and browser-side renderers |
-| `targets/pi/server.js` | Pi Express server and weather/message APIs |
-| `targets/pi/scripts/` | Pi launch, restart, theme, and validation scripts |
-| `targets/esp32-p4/` | ESP32-P4 firmware runtime |
-| `docs/` | GitHub Pages browser-flashing site for the ESP32-P4 (built firmware + [ESP Web Tools](https://esphome.github.io/esp-web-tools/) install page) |
-
-## Quick Start
+There are two ways to build this. Choose the hardware you're using, then follow its setup instructions below.
 
 ### Raspberry Pi
 
-This is a fresh headless install onto the Pi itself — just the one file, no clone needed first.
+- [Raspberry Pi Zero 2 W](https://seeedtechnologycoltd.sjv.io/QYvqYA) (affiliate, preferred)
+- Or a [Raspberry Pi 4](https://amzn.to/40en56s) or [Raspberry Pi 5](https://amzn.to/3ZEJUQH) (affiliate)
+- [Waveshare round HDMI touchscreen](https://amzn.to/4gHMrDa) (affiliate)
+- Raspberry Pi OS 64-bit Trixie
+- A microSD card, power supply, and the HDMI and USB connections for your display
+
+### ESP32-P4
+
+- [Waveshare ESP32-P4 round touchscreen board](https://amzn.to/4csETBI) (affiliate)
+- A [USB-C data cable](https://amzn.to/4gJS7uQ) (affiliate)
+- A computer to install the software from your browser
+
+The ESP32-P4 version is built for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-3.4C**, with an 800×800 round touchscreen. The board and display are one unit, so this version doesn't need a Raspberry Pi.
+
+### 3D Printed Cases
+
+If you're printing a case, the files are here:
+
+- [Pebble case — free on MakerWorld](https://makerworld.com/en/models/3274860-smart-round-weather-clock-pebble-style-case#profileId-3713868)
+- [Classic case STEP files — available in my store](https://shop.anoraker.com/products/round-weather-clock-classic-case-step-files)
+
+## 🚀 Quick Start
+
+### Raspberry Pi
+
+Start with Raspberry Pi OS installed and the Pi connected to your network. Run these commands on the Pi, either in a terminal or over SSH.
 
 Download the installer:
 
@@ -59,133 +66,135 @@ Run it:
 bash setup.sh
 ```
 
-The installer asks which hardware target you want; choose Raspberry Pi and it walks through the rest (location, room name, message sharing, etc.) and installs itself.
+Choose **Raspberry Pi** when asked. The installer will walk you through your location, room name, clock face, temperature units, message sharing, and nightshift settings.
+
+It downloads the project, installs what it needs, saves your settings, and sets up the clock to start automatically.
+
+When it finishes, reboot:
+
+```bash
+sudo reboot
+```
+
+The clock should appear after the Pi starts back up.
 
 ### ESP32-P4
 
-**Easiest way — no software install:** go to
-**[canterrain.github.io/round-weather-display](https://canterrain.github.io/round-weather-display/)**,
-plug the board in over USB, and click the button. It flashes straight from your browser (Chrome, Edge, or
-Firefox on a desktop computer — not Safari, not a phone/tablet). Once it's done, the rest of setup (WiFi,
-location, room name) happens right on the round display itself.
+You can install this version straight from your browser. Use Chrome, Edge, or Firefox on a desktop or laptop.
 
-**If you're developing the firmware, or want to build from source instead:** clone the repo and run:
+1. Plug the board into your computer with a USB-C data cable.
+2. Open the [Round Weather Display installer](https://canterrain.github.io/round-weather-display/).
+3. Click the connect button, choose your board, then click **Install**.
+4. Once it finishes and restarts, use the touchscreen to set up WiFi, your location, and your clock preferences.
 
-```bash
-targets/esp32-p4/scripts/setup.sh
-```
+For updates, plug the board back into your computer and use the same installer. Wireless updates aren't available yet.
 
-This installs ESP-IDF if it isn't present yet, builds, detects the board's serial port, and flashes. It's also
-the update path for this route — re-run it any time to pull the latest source and reflash. See
-`targets/esp32-p4/README.md` for details. Choosing ESP32-P4 in the root `setup.sh` delegates straight to this
-script.
+## Using the Clock
 
-## Raspberry Pi Requirements
+Most of the controls are swipes:
 
-- Preferred: [Raspberry Pi Zero 2](https://seeedtechnologycoltd.sjv.io/QYvqYA) (affiliate)
-- [Raspberry Pi 4](https://amzn.to/40en56s) (affiliate)
-- or
-- [Raspberry Pi 5](https://amzn.to/3ZEJUQH) (affiliate)
-- [Waveshare Display](https://amzn.to/4gHMrDa) (affiliate)
-- Raspberry Pi OS 64-bit Trixie
+| From | Gesture | What it does |
+| --- | --- | --- |
+| Analog clock | Swipe down across the middle | Switch to the digital clock |
+| Digital clock | Swipe up | Switch to the analog clock |
+| Analog clock | Swipe left | Open the forecast |
+| Forecast | Swipe right | Return to the clock |
+| Either clock face | Swipe right | Open messages |
+| Messages | Swipe left | Return to your clock face |
+| Any main screen | Swipe down from the very top edge | Open WiFi setup on Pi, or the setup screen on ESP32-P4 |
 
-## ESP32-P4 Requirements
+Tap an unread message to mark it read and return to the clock.
 
-- [ESP32-P4 Waveshare](https://amzn.to/4csETBI) (affiliate)
-- A [flat USB-C data cable](https://amzn.to/4gJS7uQ) (affiliate) and a computer to flash it from (no OTA yet) — just a browser
-  ([Chrome/Edge/Firefox](https://canterrain.github.io/round-weather-display/)) if using the browser-flashing page,
-  or ESP-IDF `v5.5.5` (installed automatically by `targets/esp32-p4/scripts/setup.sh`) if building from source
+On the Pi, the WiFi screen also opens automatically when the clock loses its connection. You can choose a network and enter its password with the on-screen keyboard. Initial location and clock settings are still handled by the Pi installer.
 
-## Configuration
+## 💬 Household Messages
 
-The canonical config example lives at `shared/spec/config.example.json`.
+You can leave a message on the clock from a browser on the same home network. Open the address for your device:
 
-The Pi installer writes the live device config to:
-
-```text
-~/round-weather-display/targets/pi/config.json
-```
-
-Important options:
-
-- `deviceId`
-  Unique ID used for message targeting and shared-clock coordination.
-- `roomName`
-  Human-friendly name shown in message controls.
-- `defaultClockFace`
-  `analog` or `digital`.
-- `timeFormat`
-  `12` or `24`.
-- `leadingZero12h`
-  Controls `07:00 AM` versus `7:00 AM`.
-- `messageSharing`
-  `single` or `shared`.
-- `nightShift`
-  Enables the dim red nighttime mode.
-
-## Product Contract
-
-The Pi build was the original reference implementation; both targets are now built against the same frozen spec.
-
-- Exact UI and behavior contract:
-  `shared/spec/product-spec.md`
-- Shared forecast heuristic:
-  `shared/logic/forecast-representative.js`
-- Shared icons:
-  `shared/assets/icons/`
-
-The goal is same product behavior, different runtime implementations.
-
-## Development Notes
-
-Run the current Pi app from the repo root:
-
-```bash
-npm start
-```
-
-Or directly:
-
-```bash
-npm --prefix targets/pi start
-```
-
-Run the shared-logic tests (forecast heuristic, location resolution, and the ESP32-P4 C ports of both, checked
-against the same fixtures the JS is tested against — see `targets/esp32-p4/tests/README.md`):
-
-```bash
-npm run test:forecast
-npm run test:location
-npm run test:esp32-parity
-npm run test:all   # all three
-```
-
-On a running Pi, the message admin page is available at:
+**Raspberry Pi:**
 
 ```text
 http://<hostname>.local:3000/messages
 ```
 
-Each ESP32-P4 clock serves the same composer page directly from the device itself:
+For example, if you named your Pi `bedroom-clock`, use `http://bedroom-clock.local:3000/messages`.
+
+**ESP32-P4:**
 
 ```text
 http://<device-ip>/
 ```
 
-## Status
+Replace `<device-ip>` with the clock's IP address.
 
-Both targets implement the full product spec:
+If you have more than one clock, enable shared messaging during setup. Give each one a room name so it's easy to choose where a message goes. Pi and ESP32-P4 clocks can share messages with each other.
 
-- Analog, digital, forecast, and message screens with matched layout/behavior across targets.
-- Live weather via Open-Meteo.
-- Shared house messaging: any clock (Pi or ESP32-P4) can compose and receive messages, with UDP-based hub discovery/election so multiple clocks on the same LAN coordinate automatically.
-- On-device WiFi and location setup on the ESP32-P4 (touchscreen: network scan, on-screen keyboard, location geocoding). Initial Pi setup (location, room name, etc.) is still configured through `setup.sh`, but the Pi also has an on-device WiFi scan/join screen (swipe down from the top of the clock face) for recovering a lost connection directly from the touchscreen, with no other device needed.
-- `shared/spec/product-spec.md` is the frozen behavior/UI contract both targets are built against.
+## ⚙️ Configuration
 
-The ESP32-P4 target has no wireless OTA yet — firmware updates are a USB reflash, either via the
-[browser-flashing page](https://canterrain.github.io/round-weather-display/) or `targets/esp32-p4/scripts/setup.sh`.
+The Pi installer creates your settings file at:
 
-## License
+```text
+~/round-weather-display/targets/pi/config.json
+```
+
+You can use the installer again to change your preferences. It uses your existing settings as the defaults and backs up the previous config in `~/round-weather-display-backups/`.
+
+If you'd rather edit the file yourself, these are the main options. The [example config](shared/spec/config.example.json) includes the full set.
+
+| Setting | What it controls |
+| --- | --- |
+| `defaultClockFace` | `analog` or `digital` |
+| `timeFormat` | `12` or `24` |
+| `leadingZero12h` | `true` for `07:00 AM`, `false` for `7:00 AM` |
+| `units` | `imperial` for Fahrenheit, `metric` for Celsius |
+| `roomName` | The name shown in the message controls, such as `Kitchen` |
+| `deviceId` | A unique name used to identify this clock when sharing messages |
+| `messageSharing` | `single` for just this clock, or `shared` for household messaging |
+| `nightShift` | `true` to enable the dim red nighttime mode |
+| `nightShiftStart` / `nightShiftEnd` | When nightshift runs, such as `22:00` to `06:00` |
+
+On the ESP32-P4, use the touchscreen setup screen to change your settings. Swipe down from the very top edge of the display to open it.
+
+## 🛠️ Development Notes
+
+The Raspberry Pi version uses Electron and Express. The ESP32-P4 version uses ESP-IDF and LVGL. The code for each lives in its own folder:
+
+| Path | What's there |
+| --- | --- |
+| `setup.sh` | Raspberry Pi installer; also launches ESP32-P4 setup from a full checkout |
+| `targets/pi/` | Raspberry Pi app, web pages, and launch scripts |
+| `targets/esp32-p4/` | ESP32-P4 firmware and build scripts |
+| `shared/` | Weather icons, shared weather logic, config example, and behavior notes |
+| `docs/` | Browser installer and downloadable ESP32-P4 firmware |
+
+To run the Pi app from a checkout with its dependencies installed:
+
+```bash
+npm start
+```
+
+To build and flash the ESP32-P4 from source, connect the board over USB and run this from the repo root:
+
+```bash
+targets/esp32-p4/scripts/setup.sh
+```
+
+The script installs ESP-IDF `v5.5.5` if needed, builds the firmware, and flashes the board. You can also use it for updates. More details are in the [ESP32-P4 README](targets/esp32-p4/README.md).
+
+Run the weather and location checks for both versions with:
+
+```bash
+npm run test:all
+```
+
+You can also run `npm run test:forecast`, `npm run test:location`, or `npm run test:esp32-parity` separately. See the [test notes](targets/esp32-p4/tests/README.md) for details and the [shared behavior spec](shared/spec/product-spec.md) for how the clock screens should work.
+
+## Related Projects
+
+- [Weather Display](https://github.com/Canterrain/weather-display), my wider clock and weather display for under a cabinet or on a desk
+- [Inky Planner](https://github.com/Canterrain/Inky-Planner), a daily planner for Raspberry Pi and Inky e-paper displays
+
+## 📃 License
 
 This project is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/).
 
