@@ -12,7 +12,7 @@ This document defines the shared, user-visible behavior for turning a text locat
 
 - Prefer `City, State` for US locations.
 - Optional country code may be supplied as a third segment:
-  - `Loveland,OH,US`
+  - `Cincinnati,OH,US`
   - `Paris,FR`
 - ZIP code entry is not part of the primary contract.
 

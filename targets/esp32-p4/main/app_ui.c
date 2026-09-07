@@ -1242,7 +1242,7 @@ static const char *default_location_prompt_text(void)
 {
   return s_ui.setup_edit_config.location_ready
     ? "Update the weather location if you want to move this display."
-    : "Enter a city and state, like Loveland, Ohio. We'll fill in timezone and coordinates automatically.";
+    : "Enter a city and state, like Cincinnati, Ohio. We'll fill in timezone and coordinates automatically.";
 }
 
 static void schedule_setup_restart(void)
@@ -3436,7 +3436,7 @@ static void build_setup_overlay(lv_obj_t *parent)
     LV_FONT_DEFAULT,
     color_text_muted(),
     LV_TEXT_ALIGN_CENTER,
-    "Enter a city and state, like Loveland, Ohio. We'll look up timezone and coordinates automatically."
+    "Enter a city and state, like Cincinnati, Ohio. We'll look up timezone and coordinates automatically."
   );
   lv_obj_set_width(s_ui.setup_location_status_label, LV_PCT(100));
   lv_label_set_long_mode(s_ui.setup_location_status_label, LV_LABEL_LONG_WRAP);

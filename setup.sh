@@ -151,7 +151,7 @@ prevLeadingZero12hChoice="Y"
 # -----------------------------------------------------------------------------
 # Config prompts
 # -----------------------------------------------------------------------------
-read -r -p "Enter your city (e.g., Loveland,OH,US)${prevCity:+ [$prevCity]}: " city
+read -r -p "Enter your city (e.g., Cincinnati,OH,US)${prevCity:+ [$prevCity]}: " city
 city="${city:-$prevCity}"
 read -r -p "Enter a room label for this clock (e.g., Kitchen, Office, Bedroom) [$prevRoomName]: " roomName
 read -r -p "Choose time format (12 or 24) [$prevTimeFormat]: " timeFormat
