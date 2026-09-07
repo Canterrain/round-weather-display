@@ -36,5 +36,27 @@ for _ in {1..30}; do
   sleep 1
 done
 
+# --disable-gpu: the Pi Zero (2) W has no working GPU driver for Chromium's
+# Wayland/EGL path -- confirmed via live logs on a Zero 2 W showing
+# "Requested GLES version (3.0) is greater than max supported (2, 0)" and
+# "VK_ERROR_INCOMPATIBLE_DRIVER", repeatedly attempting and failing GPU
+# initialization before falling back to software rendering anyway. Skipping
+# straight to a clean software path measured via Chrome DevTools Protocol
+# event timing (touch-to-next-paint) at roughly a 2-3x improvement in swipe
+# responsiveness (2100-3700ms -> 500-1100ms for the same interactions).
+# Safe here since the UI only uses CSS/SVG, no WebGL/canvas/video that would
+# actually need GPU acceleration.
+#
+# Only applied on Zero-family boards -- a Pi 4/5 has real, working GPU
+# acceleration, and disabling it there would trade a working fast path for
+# a slow one. Untested on 4/5 (no hardware to verify against), so this
+# stays scoped to the one board it's actually proven on rather than risking
+# a regression elsewhere.
+ELECTRON_ARGS=()
+PI_MODEL="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
+if [[ "$PI_MODEL" == *"Zero"* ]]; then
+  ELECTRON_ARGS+=(--disable-gpu)
+fi
+
 # Launch Electron
-exec ./node_modules/.bin/electron .
+exec ./node_modules/.bin/electron "${ELECTRON_ARGS[@]}" .
