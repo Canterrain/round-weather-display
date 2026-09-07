@@ -1,6 +1,7 @@
 # Round Weather Display
+![Round Clock Weather Display](https://github.com/user-attachments/assets/ffa7de12-8ffc-4f03-94cb-a3bf73f059a8)
 
-Round household weather display with a consistent product experience across multiple hardware targets. Both the Raspberry Pi and ESP32-P4 targets are working implementations of the same product spec.
+A round clock and weather dashboard designed for Raspberry Pi or ESP32 with Waveshare displays. The UI pulls real-time weather data from Open-Meteo and works great nightsands or as a minimalist desk display.
 
 ## Current Targets
 
@@ -81,15 +82,17 @@ script.
 
 ## Raspberry Pi Requirements
 
-- Raspberry Pi Zero 2 W, Raspberry Pi 4, or Raspberry Pi 5
-- Round HDMI display
-- Raspberry Pi OS 64-bit
-- Bookworm or Trixie
+- Preverred: [Raspberry Pi Zero 2](https://seeedtechnologycoltd.sjv.io/QYvqYA) (affiliate)
+- [Raspberry Pi 4](https://amzn.to/40en56s) (affiliate)
+- or
+- [Raspberry Pi 5](https://amzn.to/3ZEJUQH) (affiliate)
+- [Waveshare Display](https://amzn.to/4gHMrDa) (affiliate)
+- Raspberry Pi OS 64-bit Trixie
 
 ## ESP32-P4 Requirements
 
-- Waveshare `ESP32-P4-WIFI6-Touch-LCD-3.4C` (800x800 round display)
-- A USB-C data cable and a computer to flash it from (no OTA yet) — just a browser
+- [ESP21 Waveshare](https://amzn.to/4csETBI) (affiliate)
+- A [flat USB-C data cable](https://amzn.to/4gJS7uQ) (affiliate) and a computer to flash it from (no OTA yet) — just a browser
   ([Chrome/Edge/Firefox](https://canterrain.github.io/round-weather-display/)) if using the browser-flashing page,
   or ESP-IDF `v5.5.5` (installed automatically by `targets/esp32-p4/scripts/setup.sh`) if building from source
 
@@ -186,7 +189,7 @@ The ESP32-P4 target has no wireless OTA yet — firmware updates are a USB refla
 
 This project is licensed under the [Creative Commons Attribution-NonCommercial 4.0 International License](https://creativecommons.org/licenses/by-nc/4.0/).
 
-© 2025 Josh Hendrickson
+© 2026 Josh Hendrickson
 
 Shout out to the [Magic Mirror](https://github.com/MagicMirrorOrg/MagicMirror) team for inspiring some of this project.
 
