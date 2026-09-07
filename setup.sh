@@ -514,12 +514,20 @@ XML
   aut="$HOME/.config/labwc/autostart"
   touch "$aut"
 
+  # Self-heal: an earlier version of this script added a rotate_wayland.sh
+  # line that was leftover from a different project and never actually
+  # shipped in this repo -- caused real devices to fail to launch at all
+  # (bash: .../rotate_wayland.sh: No such file or directory blocked the
+  # rest of autostart). Strip it from any autostart file still carrying it.
+  if grep -q "rotate_wayland.sh" "$aut" 2>/dev/null; then
+    sed -i '/rotate_wayland\.sh/d' "$aut"
+  fi
+
   add_line() {
     local line="$1"
     grep -Fqx "$line" "$aut" 2>/dev/null || echo "$line" >> "$aut"
   }
 
-  add_line "bash \"$PI_TARGET_DIR/scripts/rotate_wayland.sh\" &"
   add_line "wtype -M alt -M logo h -m alt -m logo &"
   add_line "bash \"$PI_TARGET_DIR/scripts/rwc.sh\" &"
 
@@ -556,6 +564,24 @@ else
   setup_x11_rotation_service
   configure_x11_pm2
 fi
+
+# -----------------------------------------------------------------------------
+# Disable unused background services
+#
+# This device is a single-purpose kiosk clock; none of these apply, and on
+# memory-constrained boards (e.g. Pi Zero 2 W, 512MB RAM) freeing their
+# resident memory measurably helped UI responsiveness in testing. Applied
+# regardless of session type -- ModemManager/PackageKit are system-wide, and
+# WirePlumber runs under PipeWire's audio stack independent of X11/Wayland.
+# rpi-connect is deliberately left alone: it's a legitimate remote-access/
+# troubleshooting tool, not dead weight.
+# -----------------------------------------------------------------------------
+echo "Disabling unused background services (ModemManager, WirePlumber, PackageKit)..."
+sudo systemctl disable --now ModemManager.service >/dev/null 2>&1 || true
+sudo systemctl mask packagekit.service >/dev/null 2>&1 || true
+sudo systemctl stop packagekit.service >/dev/null 2>&1 || true
+systemctl --user mask wireplumber.service >/dev/null 2>&1 || true
+systemctl --user stop wireplumber.service >/dev/null 2>&1 || true
 
 # -----------------------------------------------------------------------------
 # Done
