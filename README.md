@@ -31,7 +31,13 @@ There are two ways to build this. Choose the hardware you're using, then follow 
 - Or a [Raspberry Pi 4](https://amzn.to/40en56s) or [Raspberry Pi 5](https://amzn.to/3ZEJUQH) (affiliate)
 - [Waveshare round HDMI touchscreen](https://amzn.to/4gHMrDa) (affiliate)
 - Raspberry Pi OS 64-bit Trixie
-- A microSD card, power supply, and the HDMI and USB connections for your display
+
+Additional supplies for the **Raspberry Pi Zero 2 W**:
+
+- [Power supply](https://amzn.to/4zY1Jei) (affiliate)
+- [Micro USB to USB-A adapter](https://amzn.to/4hfPgeE) (affiliate)
+- [Mini HDMI to HDMI cable](https://amzn.to/4ihBdpX) (affiliate)
+- [microSD card](https://amzn.to/4ictxp1) (affiliate)
 
 ### ESP32-P4
 
