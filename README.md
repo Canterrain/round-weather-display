@@ -1,6 +1,7 @@
 # Round Weather Display
 
-![Round Clock Weather Display](https://github.com/user-attachments/assets/ffa7de12-8ffc-4f03-94cb-a3bf73f059a8)
+[![Watch the Round Clock Weather Display video](https://github.com/user-attachments/assets/b909da12-5851-4d60-9017-aa0ce8f040c7)](https://www.youtube.com/watch?v=BLWPl8A7HzA)
+**Click the image above to see more about this project on Youtube.**
 
 A round clock and weather display for your nightstand, desk, or anywhere you want to keep an eye on the time and weather.
 
