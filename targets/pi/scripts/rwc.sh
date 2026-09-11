@@ -47,14 +47,19 @@ done
 # Safe here since the UI only uses CSS/SVG, no WebGL/canvas/video that would
 # actually need GPU acceleration.
 #
-# Only applied on Zero-family boards -- a Pi 4/5 has real, working GPU
-# acceleration, and disabling it there would trade a working fast path for
-# a slow one. Untested on 4/5 (no hardware to verify against), so this
-# stays scoped to the one board it's actually proven on rather than risking
-# a regression elsewhere.
+# Also applied on a Pi 3 (Model B/B+): same VideoCore IV GPU generation as
+# the Zero 2 W (BCM2837 vs. BCM2710A1), so it's reasoned to hit the same
+# broken EGL/Vulkan path -- reasoned from hardware generation, not verified
+# on real Pi 3 hardware (no unit available to test against).
+#
+# Not applied on a Pi 4/5 -- those have real, working GPU acceleration
+# (VideoCore VI/VII), and disabling it there would trade a working fast path
+# for a slow one. Untested on 4/5 (no hardware to verify against), so this
+# stays scoped to the boards it's actually proven or reasoned to need it on,
+# rather than risking a regression elsewhere.
 ELECTRON_ARGS=()
 PI_MODEL="$(tr -d '\0' < /proc/device-tree/model 2>/dev/null || true)"
-if [[ "$PI_MODEL" == *"Zero"* ]]; then
+if [[ "$PI_MODEL" == *"Zero"* || "$PI_MODEL" == *"Pi 3"* ]]; then
   ELECTRON_ARGS+=(--disable-gpu)
 fi
 

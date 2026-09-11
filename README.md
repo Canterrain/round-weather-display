@@ -30,6 +30,7 @@ There are two ways to build this. Choose the hardware you're using, then follow 
 
 - [Raspberry Pi Zero 2 W](https://seeedtechnologycoltd.sjv.io/QYvqYA) (affiliate, preferred)
 - Or a [Raspberry Pi 4](https://amzn.to/40en56s) or [Raspberry Pi 5](https://amzn.to/3ZEJUQH) (affiliate)
+- A Raspberry Pi 3 may also work, but is untested
 - [Waveshare round HDMI touchscreen](https://amzn.to/4gHMrDa) (affiliate)
 - Raspberry Pi OS 64-bit Trixie
 
