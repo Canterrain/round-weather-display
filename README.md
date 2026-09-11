@@ -54,6 +54,7 @@ If you're printing a case, the files are here:
 
 - [Pebble case — free on MakerWorld](https://makerworld.com/en/models/3274860-smart-round-weather-clock-pebble-style-case#profileId-3713868)
 - [Classic case STEP files — available in my store](https://shop.anoraker.com/products/round-weather-clock-classic-case-step-files)
+- [Magnets for Classic Case](https://amzn.to/4yCba1Q)
 
 ## 🚀 Quick Start
 
