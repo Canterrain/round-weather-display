@@ -5,7 +5,7 @@
 
 A round clock and weather display for your nightstand, desk, or anywhere you want to keep an eye on the time and weather.
 
-Pick an analog or digital clock face, swipe over to see the forecast, or leave a message for someone at home. Weather comes from Open-Meteo, with no API key needed.
+Pick an analog or digital clock face, swipe over to see the forecast and current conditions, or leave a message for someone at home. When stormy weather is on the way, the clock lets you know. Weather comes from Open-Meteo, with no API key needed.
 
 You can build it with a Raspberry Pi and round HDMI touchscreen, or use the Waveshare ESP32-P4 board with its own round display. Both versions have the same clock faces, weather, and household messaging.
 
@@ -15,11 +15,13 @@ You can build it with a Raspberry Pi and round HDMI touchscreen, or use the Wave
 - 12-hour or 24-hour time, with an optional leading zero
 - Current weather and a five-day forecast
 - Forecast icons that reflect how most of the day looks
+- A conditions screen with wind, pressure, and rain in plain language, like "Rain ending by 4 PM" or "Pressure dropping fast"
+- Storm alerts: an amber glow on the clock face when strong winds, thunderstorms, heavy rain, or a sharp pressure drop are on the way
 - A small indicator when the weather data is out of date
 - Optional red nightshift mode for a dimmer nighttime display
 - Household messages you can send from your phone or computer
 - Shared messaging between multiple clocks, including a mix of Pi and ESP32-P4 builds
-- WiFi setup from the touchscreen if you need to reconnect
+- Settings and WiFi setup from the touchscreen
 - Automatic startup when you power it on
 
 ## 🖥 Hardware
@@ -100,21 +102,30 @@ For updates, plug the board back into your computer and use the same installer. 
 
 ## Using the Clock
 
-Most of the controls are swipes:
+Your chosen clock face is the home screen. Everything else is one or two swipes away from it:
 
 | From | Gesture | What it does |
 | --- | --- | --- |
-| Analog clock | Swipe down across the middle | Switch to the digital clock |
-| Digital clock | Swipe up | Switch to the analog clock |
-| Analog clock | Swipe left | Open the forecast |
-| Forecast | Swipe right | Return to the clock |
-| Either clock face | Swipe right | Open messages |
-| Messages | Swipe left | Return to your clock face |
-| Any main screen | Swipe down from the very top edge | Open WiFi setup on Pi, or the setup screen on ESP32-P4 |
+| Clock | Swipe left | Open the forecast, then the conditions screen |
+| Forecast or conditions | Swipe right | Go back toward the clock |
+| Clock | Swipe right | Open messages |
+| Messages | Swipe left | Return to the clock |
+| Clock | Swipe down | Open Settings |
+| Settings | Swipe up, or tap Cancel | Return to the clock |
 
 Tap an unread message to mark it read and return to the clock.
 
-On the Pi, the WiFi screen also opens automatically when the clock loses its connection. You can choose a network and enter its password with the on-screen keyboard. Initial location and clock settings are still handled by the Pi installer.
+### Conditions and storm alerts
+
+The conditions screen leads with a short headline about what matters most right now, such as "Calm and dry", "Thunderstorms likely by 4 PM", or "Much colder tomorrow". Below it are a wind compass and a quick summary of wind, pressure, and rain.
+
+When strong gusts, high winds, thunderstorms, heavy rain or snow, or a sharp pressure drop are expected within the next few hours, the clock face shows an amber glow on its right edge. During an alert, one swipe left opens the conditions screen first, and the forecast is one more swipe away.
+
+### Settings
+
+Swipe down from the clock to change the weather location, room name, device ID, house messages, clock face, time format, units, and nightshift. Tap **Wi-Fi** to pick a network. **Save & Restart** applies your changes. The Pi and ESP32-P4 have the same settings screen.
+
+On the Pi, the WiFi screen also opens automatically when the clock loses its connection.
 
 ## 💬 Household Messages
 
@@ -146,7 +157,7 @@ The Pi installer creates your settings file at:
 ~/round-weather-display/targets/pi/config.json
 ```
 
-You can use the installer again to change your preferences. It uses your existing settings as the defaults and backs up the previous config in `~/round-weather-display-backups/`.
+Most settings can be changed on the clock itself (swipe down from the clock face). You can also run the installer again. It uses your existing settings as the defaults and backs up the previous config in `~/round-weather-display-backups/`.
 
 If you'd rather edit the file yourself, these are the main options. The [example config](shared/spec/config.example.json) includes the full set.
 
@@ -161,8 +172,12 @@ If you'd rather edit the file yourself, these are the main options. The [example
 | `messageSharing` | `single` for just this clock, or `shared` for household messaging |
 | `nightShift` | `true` to enable the dim red nighttime mode |
 | `nightShiftStart` / `nightShiftEnd` | When nightshift runs, such as `22:00` to `06:00` |
+| `stormGustMph` / `stormGustKmh` | Optional. Gust speed that triggers a storm alert (default 40 mph / 64 km/h) |
+| `stormWindMph` / `stormWindKmh` | Optional. Sustained wind that triggers an alert (default 25 mph / 40 km/h) |
+| `stormPressureDropHpa` | Optional. Pressure drop over 3 hours that triggers an alert (default 3 hPa) |
+| `stormPrecipMmHr` | Optional. Hourly rain or snow that counts as heavy (default 7.6 mm) |
 
-On the ESP32-P4, use the touchscreen setup screen to change your settings. Swipe down from the very top edge of the display to open it.
+On the ESP32-P4, change your settings on the touchscreen: swipe down from the clock face.
 
 ## 🛠️ Development Notes
 
@@ -196,7 +211,7 @@ Run the weather and location checks for both versions with:
 npm run test:all
 ```
 
-You can also run `npm run test:forecast`, `npm run test:location`, or `npm run test:esp32-parity` separately. See the [test notes](targets/esp32-p4/tests/README.md) for details and the [shared behavior spec](shared/spec/product-spec.md) for how the clock screens should work.
+You can also run `npm run test:forecast`, `npm run test:location`, `npm run test:conditions`, or `npm run test:esp32-parity` separately. See the [test notes](targets/esp32-p4/tests/README.md) for details and the [shared behavior spec](shared/spec/product-spec.md) for how the clock screens should work.
 
 ## Related Projects
 

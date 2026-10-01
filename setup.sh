@@ -135,6 +135,7 @@ prevDefaultClockFace="$(read_prev defaultClockFace "digital")"
 prevMessageSharing="$(read_prev messageSharing "single")"
 prevNightShift="$(read_prev nightShift "false")"
 prevLeadingZero12h="$(read_prev leadingZero12h "true")"
+prevDeviceId="$(read_prev deviceId "")"
 
 prevDefaultClockFaceChoice="2"
 [[ "$prevDefaultClockFace" == "analog" ]] && prevDefaultClockFaceChoice="1"
@@ -210,6 +211,13 @@ if [[ -z "$deviceId" ]]; then
 fi
 
 deviceId="${deviceId}-clock"
+
+# The device ID can also be set on the clock's Settings screen. Keep an
+# existing one as long as the room name hasn't changed, so re-running setup
+# doesn't silently rename this clock for shared messaging.
+if [[ -n "$prevDeviceId" && "$roomName" == "$prevRoomName" ]]; then
+  deviceId="$prevDeviceId"
+fi
 
 if [[ "$timeFormat" == "12" ]]; then
   read -r -p "Show leading zero in 12-hour mode, 07:00 AM instead of 7:00 AM? (Y/n) [$prevLeadingZero12hChoice]: " lz
@@ -317,10 +325,12 @@ npm config set fetch-retry-maxtimeout 120000 >/dev/null 2>&1 || true
 # -----------------------------------------------------------------------------
 # Backup existing config.json before refresh
 # -----------------------------------------------------------------------------
+prevConfigBackup=""
 if [[ -f "$PI_TARGET_DIR/config.json" ]]; then
   ts="$(date +%Y%m%d-%H%M%S)"
   mkdir -p "$BACKUP_DIR"
-  cp -f "$PI_TARGET_DIR/config.json" "$BACKUP_DIR/config.json.$ts.bak"
+  prevConfigBackup="$BACKUP_DIR/config.json.$ts.bak"
+  cp -f "$PI_TARGET_DIR/config.json" "$prevConfigBackup"
   echo "Backed up existing config.json to: ~/${APP_NAME}-backups/config.json.$ts.bak"
 fi
 
@@ -399,6 +409,36 @@ cat <<EOF > "$PI_TARGET_DIR/config.json"
   "snowTempC": 1
 }
 EOF
+
+# Keep settings this installer doesn't ask about (custom nightshift hours,
+# optional storm-alert thresholds like stormGustMph, ...) from the previous
+# config instead of resetting them to the template defaults above.
+if [[ -n "$prevConfigBackup" && -f "$prevConfigBackup" ]]; then
+  python3 - "$PI_TARGET_DIR/config.json" "$prevConfigBackup" <<'PYEOF'
+import json, sys
+new_path, old_path = sys.argv[1], sys.argv[2]
+ASKED = {
+    "location", "lat", "lon", "timezone", "units", "deviceId", "roomName",
+    "messageSharing", "defaultClockFace", "timeFormat", "leadingZero12h", "nightShift",
+}
+try:
+    with open(new_path) as f:
+        new = json.load(f)
+    with open(old_path) as f:
+        old = json.load(f)
+except Exception as exc:
+    print(f"Could not merge previous settings ({exc}); using defaults.")
+    sys.exit(0)
+kept = [key for key in old if key not in ASKED and new.get(key) != old[key]]
+for key in kept:
+    new[key] = old[key]
+with open(new_path, "w") as f:
+    json.dump(new, f, indent=2)
+    f.write("\n")
+if kept:
+    print("Kept previous settings: " + ", ".join(sorted(kept)))
+PYEOF
+fi
 
 # -----------------------------------------------------------------------------
 # Node dependencies
