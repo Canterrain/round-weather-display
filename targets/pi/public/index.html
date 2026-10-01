@@ -12,6 +12,7 @@
       <div class="view-layer view-clock" aria-hidden="false">
         <div class="clock-face">
           <div class="message-edge-indicator" data-message-edge-indicator aria-hidden="true"></div>
+          <div class="weather-edge-indicator" data-weather-edge-indicator aria-hidden="true"></div>
           <div id="day" class="day-label">Thursday</div>
           <div id="date-short" class="date-short">Mar 19</div>
 
@@ -53,6 +54,7 @@
       <div class="view-layer view-digital" aria-hidden="true">
         <div class="digital-face">
           <div class="message-edge-indicator" data-message-edge-indicator aria-hidden="true"></div>
+          <div class="weather-edge-indicator" data-weather-edge-indicator aria-hidden="true"></div>
           <div id="digital-day" class="digital-day">WEDNESDAY</div>
           <div id="digital-date" class="digital-date">APR 1</div>
           <div class="digital-time-block">
@@ -92,6 +94,51 @@
             <div id="forecast-tomorrow-temps" class="forecast-tomorrow-temps">61° / 48°</div>
           </div>
           <div id="forecast-list" class="forecast-list forecast-list-secondary">
+          </div>
+        </div>
+      </div>
+      <div class="view-layer view-conditions" aria-hidden="true">
+        <div class="conditions-face">
+          <div class="conditions-summary">
+            <div id="conditions-headline" class="conditions-headline">Checking the weather&hellip;</div>
+            <div id="conditions-detail" class="conditions-detail"></div>
+          </div>
+          <svg class="conditions-dial" viewBox="0 0 400 400" aria-hidden="true">
+            <circle class="conditions-dial-ring" cx="200" cy="200" r="182"></circle>
+            <g id="conditions-dial-ticks"></g>
+            <text class="conditions-dial-cardinal" x="200" y="52">N</text>
+            <text class="conditions-dial-cardinal" x="348" y="200">E</text>
+            <text class="conditions-dial-cardinal" x="200" y="348">S</text>
+            <text class="conditions-dial-cardinal" x="52" y="200">W</text>
+            <!-- Drawn for wind FROM the north, then rotated to the real
+                 direction: a weathervane-style arrow with its fletching on
+                 the upwind side and its head on the downwind side, so it
+                 reads in the direction the wind is moving. The shaft
+                 crosses faintly behind the readout. -->
+            <g id="conditions-wind-flow" class="conditions-wind-flow" style="display: none">
+              <line class="conditions-wind-flow-line" x1="200" y1="14" x2="200" y2="366"></line>
+              <path class="conditions-wind-flow-fletch" d="M186 2 L200 16 L214 2 M186 12 L200 26 L214 12 M186 22 L200 36 L214 22"></path>
+              <path class="conditions-wind-flow-head" d="M200 394 L216 366 L184 366 Z"></path>
+            </g>
+          </svg>
+          <div class="conditions-wind">
+            <div class="conditions-wind-speed-row">
+              <span id="conditions-wind-speed" class="conditions-wind-speed">--</span>
+              <span id="conditions-wind-unit" class="conditions-wind-unit">mph</span>
+            </div>
+            <div id="conditions-wind-from" class="conditions-wind-from">&nbsp;</div>
+            <div id="conditions-wind-gust" class="conditions-wind-gust">&nbsp;</div>
+          </div>
+          <div class="conditions-stat conditions-stat-pressure">
+            <div class="conditions-stat-label">Pressure</div>
+            <div id="conditions-pressure-status" class="conditions-stat-value">--</div>
+            <div id="conditions-pressure-meaning" class="conditions-stat-detail">&nbsp;</div>
+            <div id="conditions-pressure-reading" class="conditions-stat-fine">&nbsp;</div>
+          </div>
+          <div class="conditions-stat conditions-stat-precip">
+            <div id="conditions-precip-label" class="conditions-stat-label">Rain</div>
+            <div id="conditions-precip-status" class="conditions-stat-value">--</div>
+            <div id="conditions-precip-detail" class="conditions-stat-detail">&nbsp;</div>
           </div>
         </div>
       </div>

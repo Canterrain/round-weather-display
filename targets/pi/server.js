@@ -9,6 +9,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 const { pickRepresentativeForecastCode } = require('../../shared/logic/forecast-representative');
+const { buildConditions } = require('../../shared/logic/storm-conditions');
 const {
   buildGeocodeSearchUrl,
   normalizeGeocodeResult,
@@ -1144,10 +1145,11 @@ app.get('/weather', async (req, res) => {
       `?latitude=${encodeURIComponent(cfg.lat)}` +
       `&longitude=${encodeURIComponent(cfg.lon)}` +
       `&current_weather=true` +
-      `&hourly=weathercode,precipitation_probability,precipitation,rain,showers,snowfall,cloud_cover` +
+      `&hourly=weathercode,precipitation_probability,precipitation,rain,showers,snowfall,cloud_cover,pressure_msl,wind_speed_10m,wind_gusts_10m` +
       `&minutely_15=precipitation,snowfall` +
       `&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weathercode` +
       `&temperature_unit=${encodeURIComponent(tempUnit)}` +
+      `&wind_speed_unit=kmh` +
       `&timezone=${encodeURIComponent(cfg.timezone || 'auto')}` +
       `&forecast_days=${forecastDays}`;
 
@@ -1254,7 +1256,8 @@ app.get('/weather', async (req, res) => {
         sunrise: sunriseToday,
         sunset: sunsetToday
       },
-      forecast
+      forecast,
+      conditions: buildConditions(cfg, cur, hourly)
     };
 
     lastGoodPayload = payload;

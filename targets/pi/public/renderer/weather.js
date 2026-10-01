@@ -11,12 +11,28 @@ const VIEW_MODES = {
   CLOCK: 'clock',
   DIGITAL: 'digital',
   FORECAST: 'forecast',
+  CONDITIONS: 'conditions',
   MESSAGE: 'message',
   WIFI: 'wifi'
 };
 
 let currentViewMode = VIEW_MODES.CLOCK;
 let homeViewMode = VIEW_MODES.DIGITAL;
+let weatherAlertActive = false;
+let conditionsLoaded = false;
+// The weather views to the left of home, nearest first. Snapshotted when
+// leaving home so an alert that starts or clears mid-visit doesn't reshuffle
+// the row under the user's finger -- the new order applies from the next
+// swipe out of home.
+let weatherRow = [VIEW_MODES.FORECAST, VIEW_MODES.CONDITIONS];
+
+function currentWeatherRowOrder() {
+  // During an alert, conditions jumps ahead of the forecast so one swipe
+  // from home lands on it; the forecast is still one more swipe away.
+  return weatherAlertActive
+    ? [VIEW_MODES.CONDITIONS, VIEW_MODES.FORECAST]
+    : [VIEW_MODES.FORECAST, VIEW_MODES.CONDITIONS];
+}
 
 function setWeatherStatus(message) {
   const el = document.getElementById('weather-status');
@@ -134,37 +150,148 @@ function renderForecast(forecast) {
   });
 }
 
-function setViewMode(mode) {
-  const appShell = document.querySelector('.app-shell');
-  const clockView = document.querySelector('.view-clock');
-  const digitalView = document.querySelector('.view-digital');
-  const forecastView = document.querySelector('.view-forecast');
-  const messageView = document.querySelector('.view-message');
-  const wifiView = document.querySelector('.view-wifi');
-  if (!appShell || !clockView || !digitalView || !forecastView || !messageView || !wifiView) return;
+const VIEW_LAYER_SELECTORS = {
+  [VIEW_MODES.CLOCK]: '.view-clock',
+  [VIEW_MODES.DIGITAL]: '.view-digital',
+  [VIEW_MODES.FORECAST]: '.view-forecast',
+  [VIEW_MODES.CONDITIONS]: '.view-conditions',
+  [VIEW_MODES.MESSAGE]: '.view-message',
+  [VIEW_MODES.WIFI]: '.view-wifi'
+};
 
-  if (mode === VIEW_MODES.FORECAST) {
-    currentViewMode = VIEW_MODES.FORECAST;
-  } else if (mode === VIEW_MODES.DIGITAL) {
-    currentViewMode = VIEW_MODES.DIGITAL;
-  } else if (mode === VIEW_MODES.MESSAGE) {
-    currentViewMode = VIEW_MODES.MESSAGE;
-  } else if (mode === VIEW_MODES.WIFI) {
-    currentViewMode = VIEW_MODES.WIFI;
-  } else {
-    currentViewMode = VIEW_MODES.CLOCK;
+function formatSigned(value) {
+  if (!Number.isFinite(value)) return '';
+  return `${value > 0 ? '+' : value < 0 ? '\u2212' : '\u00b1'}${Math.abs(value)}`;
+}
+
+function buildConditionsDialTicks() {
+  const group = document.getElementById('conditions-dial-ticks');
+  if (!group || group.childElementCount > 0) return;
+
+  const ns = 'http://www.w3.org/2000/svg';
+  for (let deg = 0; deg < 360; deg += 15) {
+    const major = deg % 90 === 0;
+    // Cardinal letters sit where the major ticks would be.
+    if (major) continue;
+    const rad = (deg * Math.PI) / 180;
+    const outer = 172;
+    const inner = deg % 45 === 0 ? 156 : 164;
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', String(200 + outer * Math.sin(rad)));
+    line.setAttribute('y1', String(200 - outer * Math.cos(rad)));
+    line.setAttribute('x2', String(200 + inner * Math.sin(rad)));
+    line.setAttribute('y2', String(200 - inner * Math.cos(rad)));
+    line.setAttribute('class', deg % 45 === 0 ? 'conditions-dial-tick major' : 'conditions-dial-tick');
+    group.appendChild(line);
+  }
+}
+
+// Step the font down until the text fits its box on one line; wrap only as
+// a last resort. Measured rather than guessed from length because the Pi's
+// fallback font is noticeably wider than Avenir Next.
+function fitTextToWidth(el, maxPx, minPx) {
+  el.classList.remove('is-wrapped');
+  let size = maxPx;
+  el.style.fontSize = `${size}px`;
+  while (el.scrollWidth > el.clientWidth && size > minPx) {
+    size -= 1;
+    el.style.fontSize = `${size}px`;
+  }
+  if (el.scrollWidth > el.clientWidth) el.classList.add('is-wrapped');
+}
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+// The wording (headline, pressure/rain descriptions) is written by
+// shared/logic/storm-conditions.js so every target says the same thing;
+// this only places it and applies the alert styling.
+function renderConditions(conditions) {
+  const face = document.querySelector('.conditions-face');
+  if (!face) return;
+  buildConditionsDialTicks();
+  if (conditions) conditionsLoaded = true;
+
+  const alerts = Array.isArray(conditions?.alerts) ? conditions.alerts : [];
+  const alertKinds = new Set(alerts.map((alert) => alert.kind));
+
+  weatherAlertActive = alerts.length > 0;
+  document.querySelectorAll('[data-weather-edge-indicator]').forEach((edge) => {
+    edge.classList.toggle('has-alert', weatherAlertActive);
+  });
+
+  const units = conditions?.units || {};
+  const summary = conditions?.summary || {};
+  const wind = conditions?.wind || {};
+  const pressure = conditions?.pressure || {};
+  const precip = conditions?.precip || {};
+  const windAlert = alertKinds.has('gusts') || alertKinds.has('wind');
+  face.classList.toggle('has-alert', weatherAlertActive);
+  face.classList.toggle('has-wind-alert', windAlert);
+
+  const headlineEl = document.getElementById('conditions-headline');
+  if (headlineEl) {
+    headlineEl.textContent = summary.headline || 'Weather unavailable';
+    fitTextToWidth(headlineEl, 31, 22);
+  }
+  const detailEl = document.getElementById('conditions-detail');
+  if (detailEl) {
+    detailEl.textContent = summary.detail || '';
+    fitTextToWidth(detailEl, 20, 16);
   }
 
-  appShell.classList.toggle('mode-clock', currentViewMode === VIEW_MODES.CLOCK);
-  appShell.classList.toggle('mode-digital', currentViewMode === VIEW_MODES.DIGITAL);
-  appShell.classList.toggle('mode-forecast', currentViewMode === VIEW_MODES.FORECAST);
-  appShell.classList.toggle('mode-message', currentViewMode === VIEW_MODES.MESSAGE);
-  appShell.classList.toggle('mode-wifi', currentViewMode === VIEW_MODES.WIFI);
-  clockView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.CLOCK));
-  digitalView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.DIGITAL));
-  forecastView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.FORECAST));
-  messageView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.MESSAGE));
-  wifiView.setAttribute('aria-hidden', String(currentViewMode !== VIEW_MODES.WIFI));
+  setText('conditions-wind-speed', Number.isFinite(wind.speed) ? String(wind.speed) : '--');
+  setText('conditions-wind-unit', units.wind || '');
+  setText('conditions-wind-from', wind.from || '\u00a0');
+
+  const gustEl = document.getElementById('conditions-wind-gust');
+  if (gustEl) {
+    gustEl.textContent = Number.isFinite(wind.gust) ? `gusts to ${wind.gust} ${units.wind || ''}`.trim() : '\u00a0';
+    gustEl.classList.toggle('is-alert', windAlert);
+  }
+
+  const flow = document.getElementById('conditions-wind-flow');
+  if (flow) {
+    const hasDirection = Number.isFinite(wind.direction);
+    // SVG elements ignore the `hidden` attribute, so toggle display instead.
+    flow.style.display = hasDirection ? '' : 'none';
+    if (hasDirection) flow.setAttribute('transform', `rotate(${wind.direction} 200 200)`);
+  }
+
+  setText('conditions-pressure-status', pressure.status || '--');
+  setText('conditions-pressure-meaning', pressure.meaning || '\u00a0');
+  fitTextToWidth(document.getElementById('conditions-pressure-status'), 28, 22);
+  fitTextToWidth(document.getElementById('conditions-pressure-meaning'), 18, 14);
+  let reading = '\u00a0';
+  if (Number.isFinite(pressure.value)) {
+    reading = `${pressure.value} ${units.pressure || ''}`.trim();
+    if (Number.isFinite(pressure.change)) reading += ` (${formatSigned(pressure.change)} in 3h)`;
+  }
+  setText('conditions-pressure-reading', reading);
+  document.querySelector('.conditions-stat-pressure')?.classList.toggle('is-alert', alertKinds.has('pressure'));
+
+  setText('conditions-precip-label', precip.label || 'Rain');
+  setText('conditions-precip-status', precip.status || '--');
+  setText('conditions-precip-detail', precip.detail || '\u00a0');
+  fitTextToWidth(document.getElementById('conditions-precip-status'), 28, 22);
+  fitTextToWidth(document.getElementById('conditions-precip-detail'), 18, 14);
+  document.querySelector('.conditions-stat-precip')?.classList.toggle('is-alert', alertKinds.has('precip') || alertKinds.has('thunder'));
+}
+
+function setViewMode(mode) {
+  const appShell = document.querySelector('.app-shell');
+  if (!appShell) return;
+
+  currentViewMode = Object.prototype.hasOwnProperty.call(VIEW_LAYER_SELECTORS, mode)
+    ? mode
+    : VIEW_MODES.CLOCK;
+
+  for (const [viewMode, selector] of Object.entries(VIEW_LAYER_SELECTORS)) {
+    appShell.classList.toggle(`mode-${viewMode}`, currentViewMode === viewMode);
+    document.querySelector(selector)?.setAttribute('aria-hidden', String(currentViewMode !== viewMode));
+  }
 }
 
 function setupSwipeNavigation() {
@@ -201,15 +328,22 @@ function setupSwipeNavigation() {
     // setup is reachable, so there's no analog/digital swipe anymore.
     // Every screen is a fixed neighbour of home and returns with the
     // opposite swipe:
-    //   left -> forecast, right -> messages, down -> WiFi (sits above home).
+    //   right -> messages
+    //   left  -> forecast -> conditions (conditions first during an alert)
+    //   down  -> WiFi (sits above home)
     // Swipe up from home is intentionally unused (reserved for a future view
     // below home).
+    const rowIndex = weatherRow.indexOf(currentViewMode);
     if (absX >= 70 && absX > absY * 1.5) {
       if (isHome) {
-        if (deltaX < 0) setViewMode(VIEW_MODES.FORECAST);
+        if (deltaX < 0) {
+          weatherRow = currentWeatherRowOrder();
+          setViewMode(weatherRow[0]);
+        }
         if (deltaX > 0) setViewMode(VIEW_MODES.MESSAGE);
-      } else if (currentViewMode === VIEW_MODES.FORECAST && deltaX > 0) {
-        setViewMode(homeViewMode);
+      } else if (rowIndex >= 0) {
+        if (deltaX < 0 && rowIndex < weatherRow.length - 1) setViewMode(weatherRow[rowIndex + 1]);
+        if (deltaX > 0) setViewMode(rowIndex === 0 ? homeViewMode : weatherRow[rowIndex - 1]);
       } else if (currentViewMode === VIEW_MODES.MESSAGE && deltaX < 0) {
         setViewMode(homeViewMode);
       }
@@ -279,12 +413,14 @@ async function fetchWeather() {
         console.error('Weather fetch error:', data.error);
       }
       setWeatherStatus('Weather data stale');
+      if (!conditionsLoaded) renderConditions(null);
       return;
     }
 
     renderWeather(data.current);
     renderForecast(data.forecast);
     renderDigitalWeather(data.current, data.forecast);
+    renderConditions(data.conditions);
 
     if (data.stale) {
       const updatedAtMs = Date.parse(data.updatedAt);
@@ -297,6 +433,7 @@ async function fetchWeather() {
   } catch (error) {
     console.error('Weather fetch failed:', error);
     setWeatherStatus('Weather data stale');
+    if (!conditionsLoaded) renderConditions(null);
   }
 }
 
@@ -366,6 +503,8 @@ async function initializeWeatherUi() {
   renderWeather(FALLBACK_WEATHER);
   renderForecast(null);
   renderDigitalWeather(FALLBACK_WEATHER, null);
+  // Leave the "Checking the weather…" placeholder until the first fetch.
+  buildConditionsDialTicks();
   setWeatherStatus('');
   setupSwipeNavigation();
   await fetchAppConfig();

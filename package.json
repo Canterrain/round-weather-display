@@ -8,7 +8,8 @@
     "start:pi": "npm --prefix targets/pi start",
     "test:forecast": "npm --prefix targets/pi run test:forecast",
     "test:location": "npm --prefix targets/pi run test:location",
+    "test:conditions": "npm --prefix targets/pi run test:conditions",
     "test:esp32-parity": "bash targets/esp32-p4/scripts/test-weather-parity.sh",
-    "test:all": "npm run test:forecast && npm run test:location && npm run test:esp32-parity"
+    "test:all": "npm run test:forecast && npm run test:location && npm run test:conditions && npm run test:esp32-parity"
   }
 }

@@ -25,6 +25,7 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
   - current temperature
   - high/low line
 - Message edge indicator visible when unread messages exist
+- Weather edge indicator (amber, right edge) visible while a storm alert is active
 
 ### Digital Home
 
@@ -33,13 +34,48 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
 - Optional meridiem indicator in 12-hour mode
 - Current temperature, icon, summary, and high/low
 - Five forecast day cards beneath the current conditions
-- Same message edge indicator treatment as analog
+- Same message and weather edge indicator treatment as analog
 
 ### Forecast View
 
 - Large circular "Tomorrow" hero card
 - Tomorrow icon and high/low temperatures
 - Four additional forecast rows beneath
+
+### Conditions View
+
+- No title; a plain-language headline and detail line lead the view, e.g.
+  `Calm and dry` / `for the next 6 hours`, or `Thunderstorms likely by 4 PM` /
+  `Gusts up to 58 mph by 4 PM`. Amber while an alert is active
+- Text fitting: the headline sits in a 440px-wide box (the circle is only
+  ~510px across at that height) and steps its font down from 31px to 22px
+  until it fits on one line, measured rather than guessed from length since
+  fonts differ per device (the Pi falls back to DejaVu Sans). The detail line
+  and the pressure/rain lines fit the same way. Only wrap as a last resort.
+  - ESP32-P4: measure with `lv_text_get_size` and pick from the available
+    font sizes the same way
+- Wind compass: ring with N/E/S/W labels and ticks; a weathervane-style
+  arrow crosses the dial in the direction the wind is moving: fletching
+  (three swept-back strokes) on the upwind side, a filled arrowhead pointing
+  out on the downwind side, and a faint dashed shaft behind the readout.
+  Hidden when direction is unknown. (Unlike a real weathervane, the head
+  points downwind, so it agrees with the `from the <direction>` text.)
+  - ESP32-P4: render the arrow once as an alpha-only image and rotate it
+    with `lv_image_set_rotation` like the clock hands, recoloring it for
+    normal / alert / night shift. The Pi's glow is decorative only.
+- Inside the compass: wind speed and unit, `from the <direction>` (8-point,
+  spelled out), and `gusts to <n> <unit>` only when gusts exceed the speed
+- Pressure column: status word and a hedged plain-language line, with the
+  raw reading and its 3h change as small print:
+  - `Rising` / `Can mean clearer weather`
+  - `Steady` / `Weather likely to stay the same`
+  - `Dropping` / `Can mean clouds or rain`
+  - `Dropping fast` / `Can mean a storm is coming`
+- Rain (or Snow) column: `None expected`, `Possible (n%)`, `Likely (n%)`,
+  or `Raining now`, plus the expected amount by the end of the next 6h
+- Values tied to an active alert turn amber
+- Night shift keeps everything red-toned, including the alert colors
+- All wording comes from the shared logic, not the renderer
 
 ### Message View
 
@@ -54,13 +90,17 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
 - Home is whichever face `defaultClockFace` selects (`analog` or `digital`).
   The other face is not reachable by gesture.
 - From home (either face):
-  - swipe left -> `forecast`
+  - swipe left -> first view of the weather row (see below)
   - swipe right -> `message`
   - swipe down -> WiFi setup (Pi) / setup screen (ESP32-P4); anywhere on
     the face, home only
   - swipe up -> unused (reserved for a future view)
-- From `forecast`:
-  - swipe right -> home
+- Weather row, left of home: `forecast` then `conditions`. While a storm
+  alert is active the order is `conditions` then `forecast`. The order is
+  fixed when leaving home, so an alert starting or clearing mid-visit only
+  takes effect on the next swipe out of home.
+  - swipe left -> next view in the row (no-op at the end)
+  - swipe right -> previous view in the row, or home from the first
 - From `message`:
   - swipe left -> home
 - From WiFi setup:
@@ -129,6 +169,29 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
 - The displayed forecast icon does not blindly use Open-Meteo daily `weathercode`
 - Instead, daytime hourly samples from `08:00` through `20:00` are summarized
 - Shared forecast heuristics live in `shared/logic/forecast-representative.js`
+
+## Conditions Contract
+
+- Shared logic lives in `shared/logic/storm-conditions.js`; fixtures in
+  `shared/test-data/storm-conditions-cases.json`
+- Inputs: `current_weather` (live wind speed/direction) plus hourly
+  `pressure_msl`, `wind_speed_10m`, `wind_gusts_10m`, `precipitation`,
+  `precipitation_probability`, `snowfall`, `weathercode`, requested with
+  `wind_speed_unit=kmh`; everything is computed in km/h, hPa, mm and
+  converted for display (mph/inHg/in for imperial)
+- Pressure trend is the 3h change (falling/rising beyond 1 hPa, otherwise
+  steady); before 03:00 local, the next 3h forecast change is used instead
+- Alerts consider now through the next 3h:
+  - `thunder`: weathercode 95/96/99
+  - `gusts`: gusts >= 40 mph / 64 km/h, else `wind`: sustained >= 25 mph / 40 km/h
+  - `pressure`: 3h change <= -3 hPa
+  - `precip`: >= 7.6 mm in an hour (`Heavy snow` if snowfall, else `Heavy rain`)
+- `summary.headline` / `summary.detail`: the first alert as a sentence with
+  its timing (`now` or `by <hour>`), the second alert (or the pressure
+  meaning) as the detail. With no alerts, in priority order: raining now,
+  thunder later in the 6h outlook, gusts over the alert threshold later,
+  rain likely, chance of rain, then `Breezy and dry` / `Calm and dry`
+- Times follow `timeFormat` (`6 PM` or `18:00`)
 
 ## Location Resolution Contract
 
@@ -205,6 +268,8 @@ Expected fields:
 - `recentSnowMm15`
 - `snowTempF`
 - `snowTempC`
+- Optional storm thresholds: `stormGustMph` / `stormGustKmh`,
+  `stormWindMph` / `stormWindKmh`, `stormPressureDropHpa`, `stormPrecipMmHr`
 
 ## Asset Contract
 
