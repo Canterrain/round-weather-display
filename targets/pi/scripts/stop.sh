@@ -21,7 +21,7 @@ fi
 pkill -f "${APP_DIR//\//\\/}.*node_modules\/\.bin\/electron" 2>/dev/null || true
 pkill -f "${APP_DIR//\//\\/}.*electron" 2>/dev/null || true
 
-# 3) Kill the Express server that was started as: node server.js from THIS app directory
+# 3) Kill the Express server that rwc.sh started as: node "<APP_DIR>/server.js"
 pkill -f "node .*${APP_DIR//\//\\/}\/server\.js" 2>/dev/null || true
 
 # 4) Kill the launcher script itself if it's still running

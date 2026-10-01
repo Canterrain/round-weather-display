@@ -25,8 +25,10 @@ else
   export ELECTRON_OZONE_PLATFORM_HINT=auto
 fi
 
-# Start the Express server
-node --network-family-autoselection-attempt-timeout=500 server.js &
+# Start the Express server. Use the full path so stop.sh (which matches on
+# "<APP_DIR>/server.js") can find it -- a bare "server.js" never matched, so
+# restarts left the old server running with the old code.
+node --network-family-autoselection-attempt-timeout=500 "$APP_DIR/server.js" &
 
 # Wait for server to be ready (max ~30s)
 for _ in {1..30}; do
