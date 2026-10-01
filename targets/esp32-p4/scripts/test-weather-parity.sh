@@ -9,8 +9,9 @@ set -euo pipefail
 # main/location_scoring.c are deliberately free of ESP-IDF dependencies.
 #
 # This is the parity check: if you change shared/logic/forecast-representative.js
-# or shared/logic/open-meteo-location.js (or the corresponding C ports),
-# run this alongside `npm run test:forecast` / `npm run test:location` and
+# shared/logic/open-meteo-location.js or shared/logic/storm-conditions.js
+# (or the corresponding C ports), run this alongside `npm run test:forecast`
+# / `npm run test:location` / `npm run test:conditions` and
 # make sure both sides still agree.
 # -----------------------------------------------------------------------------
 
@@ -73,6 +74,14 @@ echo "Building location parity test..."
   "$CJSON_DIR/cJSON.c" \
   -o "$BUILD_DIR/test_location_scoring"
 
+echo "Building storm-conditions parity test..."
+"$CC" "${COMMON_FLAGS[@]}" \
+  "$PROJECT_DIR/tests/test_storm_conditions.c" \
+  "$PROJECT_DIR/main/storm_conditions.c" \
+  "$CJSON_DIR/cJSON.c" \
+  -lm \
+  -o "$BUILD_DIR/test_storm_conditions"
+
 echo ""
 echo "--- Forecast representative-code parity ---"
 forecast_status=0
@@ -84,7 +93,12 @@ location_status=0
 "$BUILD_DIR/test_location_scoring" "$REPO_ROOT/shared/test-data/location-resolution-cases.json" || location_status=$?
 
 echo ""
-if [[ "$forecast_status" -ne 0 || "$location_status" -ne 0 ]]; then
+echo "--- Storm-conditions parity ---"
+conditions_status=0
+"$BUILD_DIR/test_storm_conditions" "$REPO_ROOT/shared/test-data/storm-conditions-cases.json" || conditions_status=$?
+
+echo ""
+if [[ "$forecast_status" -ne 0 || "$location_status" -ne 0 || "$conditions_status" -ne 0 ]]; then
   echo "PARITY CHECK FAILED: the ESP32-P4 C port disagrees with the JS implementation"
   echo "on at least one fixture case. Fix the C port (or the JS, or the fixture,"
   echo "whichever is wrong) before shipping -- this is exactly the drift this"

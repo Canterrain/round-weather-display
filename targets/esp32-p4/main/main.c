@@ -199,7 +199,10 @@ static void ui_heartbeat_task(void *arg)
     vTaskDelay(delay_ticks);
     uptime_seconds += 1;
 
-    app_runtime_state_t runtime_snapshot;
+    /* Static, not on this task's 4 KB stack: the runtime state carries the
+     * full weather snapshot including the conditions summary. Only this
+     * task touches it. */
+    static app_runtime_state_t runtime_snapshot;
     runtime_state_snapshot(&runtime_snapshot);
 
     if (bsp_display_lock(UI_HEARTBEAT_LOCK_TIMEOUT_MS) == ESP_OK) {

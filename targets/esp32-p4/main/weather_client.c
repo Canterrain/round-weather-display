@@ -11,6 +11,7 @@
 #include "esp_http_client.h"
 #include "esp_log.h"
 #include "forecast_representative.h"
+#include "storm_conditions.h"
 #include "weather_icon_names.h"
 
 static const char *TAG = "rwd_weather";
@@ -262,9 +263,11 @@ esp_err_t weather_client_fetch(
     "?latitude=%s"
     "&longitude=%s"
     "&current_weather=true"
-    "&hourly=weathercode,precipitation_probability,precipitation,rain,showers,snowfall,cloud_cover"
+    "&hourly=weathercode,precipitation_probability,precipitation,rain,showers,snowfall,cloud_cover,"
+    "pressure_msl,wind_speed_10m,wind_gusts_10m,temperature_2m"
     "&daily=temperature_2m_max,temperature_2m_min,weathercode"
     "&temperature_unit=%s"
+    "&wind_speed_unit=kmh"
     "&timezone=%s"
     "&forecast_days=%d",
     config->latitude,
@@ -407,6 +410,29 @@ esp_err_t weather_client_fetch(
       "%s",
       weather_icon_name_for_conditions(code, true, forecast_thundersnow)
     );
+  }
+
+  storm_conditions_config_t conditions_config;
+  storm_conditions_default_config(&conditions_config);
+  conditions_config.metric = is_metric_units(config);
+  conditions_config.time_24h = strings_equal_ignore_case(config->time_format, "24");
+  out_snapshot->has_conditions = storm_conditions_build(
+    &conditions_config,
+    current_weather,
+    hourly,
+    daily,
+    &out_snapshot->conditions
+  );
+  if (out_snapshot->has_conditions) {
+    ESP_LOGI(
+      TAG,
+      "Conditions: \"%s\" (%s), %d alert(s)",
+      out_snapshot->conditions.headline,
+      out_snapshot->conditions.change_label,
+      out_snapshot->conditions.alert_count
+    );
+  } else {
+    ESP_LOGW(TAG, "Conditions unavailable: current hour not found in hourly data");
   }
 
   cJSON_Delete(root);

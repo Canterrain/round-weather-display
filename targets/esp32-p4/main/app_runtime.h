@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <time.h>
 
+#include "storm_conditions.h"
+
 #define APP_STATUS_TEXT_LEN 96
 #define APP_WEATHER_SUMMARY_LEN 32
 #define APP_WEATHER_ICON_NAME_LEN 24
@@ -35,6 +37,10 @@ typedef struct {
   char summary[APP_WEATHER_SUMMARY_LEN];
   char icon_name[APP_WEATHER_ICON_NAME_LEN];
   app_forecast_day_t forecast[APP_FORECAST_DAYS];
+  /* Conditions view + storm alerts (storm_conditions.c); false when the
+   * current hour couldn't be found in the hourly data. */
+  bool has_conditions;
+  storm_conditions_t conditions;
 } app_weather_snapshot_t;
 
 typedef struct {
