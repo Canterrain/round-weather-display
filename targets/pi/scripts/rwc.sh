@@ -25,6 +25,10 @@ else
   export ELECTRON_OZONE_PLATFORM_HINT=auto
 fi
 
+# Lets the server know it's running as the kiosk, so the Settings screen's
+# "Save & Restart" may restart the app (see scheduleKioskRestart in server.js).
+export ROUND_CLOCK_KIOSK=1
+
 # Start the Express server. Use the full path so stop.sh (which matches on
 # "<APP_DIR>/server.js") can find it -- a bare "server.js" never matched, so
 # restarts left the old server running with the old code.

@@ -77,6 +77,22 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
 - Night shift keeps everything red-toned, including the alert colors
 - All wording comes from the shared logic, not the renderer
 
+### Settings View
+
+- Reached by swiping down from home; identical fields on both targets, in
+  this order: Location (City, State), Room Name, Device ID, House Messages
+  (Single/Shared), Home Screen (Digital/Analog), Time Format (12-hour/24-hour),
+  Leading Zero (On/Off), Units (Imperial/Metric), Night Shift (On/Off)
+- Buttons: `Wi-Fi` (opens the network picker; its Done/Back returns to
+  Settings with unsaved edits intact), `Cancel` (discards edits, returns
+  home), `Save & Restart`
+- Text fields are edited on their own step with the on-screen keyboard
+- Saving validates (all three text fields required), looks up a changed
+  location (lat/lon/timezone), writes the config, and restarts the app
+- A lost Wi-Fi connection still opens the network picker directly
+- Pi: `GET`/`POST /api/settings`, localhost-only like the Wi-Fi API; keys
+  the screen doesn't edit are preserved; config is written atomically
+
 ### Message View
 
 - Single active message card, or empty state
@@ -92,8 +108,7 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
 - From home (either face):
   - swipe left -> first view of the weather row (see below)
   - swipe right -> `message`
-  - swipe down -> WiFi setup (Pi) / setup screen (ESP32-P4); anywhere on
-    the face, home only
+  - swipe down -> Settings; anywhere on the face, home only
   - swipe up -> unused (reserved for a future view)
 - Weather row, left of home: `forecast` then `conditions`. While a storm
   alert is active the order is `conditions` then `forecast`. The order is
@@ -103,7 +118,7 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
   - swipe right -> previous view in the row, or home from the first
 - From `message`:
   - swipe left -> home
-- From WiFi setup:
+- From Settings or its Wi-Fi page:
   - swipe up -> home
 - Swipes that start on a scrolling or interactive area (WiFi network list,
   on-screen keyboard) are handled by that area and never navigate.

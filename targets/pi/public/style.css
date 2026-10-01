@@ -88,6 +88,7 @@ body.is-night .clock-stage {
 }
 
 .mode-message .status-stack,
+.mode-settings .status-stack,
 .mode-wifi .status-stack {
   opacity: 0;
 }
@@ -122,6 +123,7 @@ body.is-night .clock-stage {
 .mode-forecast .view-forecast,
 .mode-conditions .view-conditions,
 .mode-message .view-message,
+.mode-settings .view-settings,
 .mode-wifi .view-wifi {
   opacity: 1;
   visibility: visible;
@@ -247,6 +249,25 @@ body.is-night .clock-stage {
   box-sizing: border-box;
 }
 
+.settings-face {
+  position: relative;
+  width: 760px;
+  height: 760px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(60, 79, 111, 0.28) 0%, rgba(19, 26, 38, 0.8) 38%, rgba(10, 14, 22, 0.96) 72%, rgba(2, 4, 8, 0.98) 100%);
+  box-shadow:
+    inset 0 0 0 2px var(--face-edge),
+    inset 0 0 120px var(--face-glow),
+    0 20px 50px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 64px 100px 56px;
+  box-sizing: border-box;
+}
+
+.settings-face::before,
 .wifi-face::before {
   content: "";
   position: absolute;
@@ -928,7 +949,7 @@ body.is-night .clock-stage {
   color: var(--night-shift-status, rgba(255, 140, 140, 0.9));
 }
 
-.wifi-keyboard {
+.osk {
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -936,13 +957,13 @@ body.is-night .clock-stage {
   gap: 8px;
 }
 
-.wifi-keyboard-row {
+.osk-row {
   display: flex;
   gap: 6px;
   justify-content: center;
 }
 
-.wifi-key {
+.osk-key {
   min-width: 42px;
   padding: 10px 0;
   border: 0;
@@ -955,16 +976,138 @@ body.is-night .clock-stage {
   text-align: center;
 }
 
-.wifi-key:active {
+.osk-key:active {
   background: rgba(255, 255, 255, 0.2);
 }
 
-.wifi-key-wide {
+.osk-key-wide {
   min-width: 90px;
 }
 
-.wifi-key-space {
+.osk-key-space {
   min-width: 220px;
+}
+
+/* --- Settings screen (swipe down from home) --- */
+
+.settings-title {
+  font-size: 32px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  color: rgba(246, 250, 255, 0.94);
+  text-align: center;
+}
+
+.settings-list {
+  width: 100%;
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  /* Fade the list out at the bottom so it reads as scrollable. */
+  -webkit-mask-image: linear-gradient(180deg, #000 88%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 88%, transparent 100%);
+  padding-bottom: 24px;
+  box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+.settings-list::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-list[hidden],
+.settings-edit[hidden],
+.settings-actions[hidden] {
+  display: none;
+}
+
+.settings-row {
+  flex: none;
+  border: 0;
+  padding: 12px 18px;
+  font: inherit;
+  font-size: 19px;
+  font-weight: 550;
+  text-align: left;
+}
+
+.settings-row-label {
+  flex: none;
+}
+
+.settings-row-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(184, 221, 255, 0.86);
+}
+
+.settings-edit {
+  width: 100%;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.settings-edit-label {
+  font-size: 24px;
+  font-weight: 600;
+  color: rgba(246, 250, 255, 0.94);
+}
+
+.settings-edit-hint {
+  margin-top: -6px;
+  font-size: 16px;
+  color: rgba(228, 236, 248, 0.6);
+  text-align: center;
+}
+
+.settings-edit-input {
+  width: 100%;
+  flex: none;
+}
+
+.settings-status {
+  min-height: 22px;
+  margin-top: 8px;
+  max-width: 460px;
+  font-size: 17px;
+  font-weight: 550;
+  color: rgba(228, 236, 248, 0.7);
+  text-align: center;
+}
+
+.settings-status.is-error {
+  color: rgba(255, 140, 140, 0.92);
+}
+
+.settings-status.is-success {
+  color: rgba(140, 220, 170, 0.92);
+}
+
+/* The circle narrows toward the bottom, so the buttons stay compact. */
+.settings-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+.settings-actions .wifi-primary-button,
+.settings-actions .wifi-secondary-button {
+  flex: none;
+  padding: 12px 18px;
+  font-size: 17px;
+}
+
+.settings-actions button:disabled {
+  opacity: 0.5;
 }
 
 .dial-svg {
@@ -1450,6 +1593,7 @@ body.night-shift-red .clock-face,
 body.night-shift-red .forecast-face,
 body.night-shift-red .conditions-face,
 body.night-shift-red .message-face,
+body.night-shift-red .settings-face,
 body.night-shift-red .wifi-face {
   background:
     radial-gradient(circle at 50% 46%, rgba(82, 30, 30, 0.18) 0%, rgba(27, 11, 11, 0.78) 38%, rgba(11, 6, 6, 0.96) 72%, rgba(3, 1, 1, 0.99) 100%);
@@ -1503,6 +1647,8 @@ body.night-shift-red .conditions-stat-value,
 body.night-shift-red .message-title,
 body.night-shift-red .message-text,
 body.night-shift-red .wifi-title,
+body.night-shift-red .settings-title,
+body.night-shift-red .settings-edit-label,
 body.night-shift-red .wifi-selected-ssid {
   color: rgba(236, 192, 192, 0.9);
 }

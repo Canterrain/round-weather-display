@@ -13,6 +13,7 @@ const VIEW_MODES = {
   FORECAST: 'forecast',
   CONDITIONS: 'conditions',
   MESSAGE: 'message',
+  SETTINGS: 'settings',
   WIFI: 'wifi'
 };
 
@@ -156,6 +157,7 @@ const VIEW_LAYER_SELECTORS = {
   [VIEW_MODES.FORECAST]: '.view-forecast',
   [VIEW_MODES.CONDITIONS]: '.view-conditions',
   [VIEW_MODES.MESSAGE]: '.view-message',
+  [VIEW_MODES.SETTINGS]: '.view-settings',
   [VIEW_MODES.WIFI]: '.view-wifi'
 };
 
@@ -330,7 +332,7 @@ function setupSwipeNavigation() {
     // opposite swipe:
     //   right -> messages
     //   left  -> forecast -> conditions (conditions first during an alert)
-    //   down  -> WiFi (sits above home)
+    //   down  -> Settings (sits above home; Wi-Fi is a page within it)
     // Swipe up from home is intentionally unused (reserved for a future view
     // below home).
     const rowIndex = weatherRow.indexOf(currentViewMode);
@@ -349,8 +351,8 @@ function setupSwipeNavigation() {
       }
     } else if (absY >= 70 && absY > absX * 1.5) {
       if (isHome && deltaY > 0) {
-        setViewMode(VIEW_MODES.WIFI);
-      } else if (currentViewMode === VIEW_MODES.WIFI && deltaY < 0) {
+        setViewMode(VIEW_MODES.SETTINGS);
+      } else if ((currentViewMode === VIEW_MODES.SETTINGS || currentViewMode === VIEW_MODES.WIFI) && deltaY < 0) {
         setViewMode(homeViewMode);
       }
     }

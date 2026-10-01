@@ -1,9 +1,8 @@
 // On-device WiFi setup, mirroring the ESP32-P4's on-screen network picker so
 // the clock can recover from a lost WiFi connection without any other
-// device, keyboard, or monitor. Reached via the swipe-down-from-home gesture
-// added to setupSwipeNavigation() in weather.js, and auto-surfaced whenever
-// the device actually loses its WiFi connection (see pollWifiLinkStatus
-// below).
+// device, keyboard, or monitor. Reached from the Settings screen's "Wi-Fi"
+// button (settings.js), and auto-surfaced whenever the device actually loses
+// its WiFi connection (see pollWifiLinkStatus below).
 
 const WIFI_STATUS_POLL_INTERVAL_MS = 5000;
 const WIFI_SCAN_POLL_INTERVAL_MS = 15 * 1000;
@@ -14,8 +13,9 @@ const wifiState = {
   step: 'list',
   networks: [],
   selectedNetwork: null,
-  shiftActive: false,
-  symbolsActive: false,
+  // Where Done / a successful connect goes: Settings when opened from there,
+  // home when auto-surfaced by an outage.
+  returnView: null,
   consecutiveDisconnectedPolls: 0,
   dismissedForThisOutage: false,
   scanPollHandle: null,
@@ -31,6 +31,16 @@ function isWifiViewOpen() {
 }
 
 let wifiViewBuilt = false;
+let wifiKeyboard = null;
+
+function leaveWifiView() {
+  const returnView = wifiState.returnView;
+  if (returnView) {
+    window.appView?.setViewMode?.(returnView);
+  } else {
+    window.appView?.returnToHome?.();
+  }
+}
 
 // Builds this screen's DOM (title, status line, network list, password
 // panel, ~40 keyboard buttons) on first open rather than at page load. This
@@ -59,14 +69,14 @@ function ensureWifiViewBuilt() {
           <button id="wifi-back-button" class="wifi-secondary-button" type="button">Back</button>
           <button id="wifi-connect-button" class="wifi-primary-button" type="button">Connect</button>
         </div>
-        <div id="wifi-keyboard" class="wifi-keyboard" data-swipe-exempt></div>
+        <div id="wifi-keyboard" class="osk" data-swipe-exempt></div>
       </div>
       <button id="wifi-done-button" class="wifi-secondary-button wifi-done-button" type="button">Done</button>
     </div>
   `;
 
   setupWifiViewEvents();
-  buildWifiKeyboard();
+  wifiKeyboard = window.createOnScreenKeyboard(wifiEl('wifi-keyboard'), () => wifiEl('wifi-password-input'));
   wifiViewBuilt = true;
 }
 
@@ -155,8 +165,7 @@ function showListStep() {
 function showPasswordStep(network) {
   wifiState.step = 'password';
   wifiState.selectedNetwork = network;
-  wifiState.shiftActive = false;
-  wifiState.symbolsActive = false;
+  wifiKeyboard?.reset();
 
   wifiEl('wifi-network-list').hidden = true;
   wifiEl('wifi-password-panel').hidden = false;
@@ -181,9 +190,7 @@ function selectNetwork(network) {
 function setWifiControlsDisabled(disabled) {
   wifiEl('wifi-connect-button').disabled = disabled;
   wifiEl('wifi-back-button').disabled = disabled;
-  wifiEl('wifi-keyboard').classList.toggle('wifi-keyboard-disabled', disabled);
-  wifiEl('wifi-keyboard').style.pointerEvents = disabled ? 'none' : '';
-  wifiEl('wifi-keyboard').style.opacity = disabled ? '0.5' : '';
+  wifiKeyboard?.setDisabled(disabled);
 }
 
 async function attemptConnect() {
@@ -206,9 +213,7 @@ async function attemptConnect() {
 
     wifiState.consecutiveDisconnectedPolls = 0;
     wifiState.dismissedForThisOutage = false;
-    if (window.appView?.returnToHome) {
-      window.appView.returnToHome();
-    }
+    leaveWifiView();
   } catch (error) {
     wifiState.step = 'password';
     setWifiControlsDisabled(false);
@@ -219,112 +224,12 @@ async function attemptConnect() {
   }
 }
 
-// --- Custom on-screen keyboard ---
-//
-// Built from scratch rather than relying on an OS-level virtual keyboard
-// (e.g. squeekboard): Electron kiosk windows don't reliably trigger those,
-// and this keeps the feature as self-contained as the rest of the project,
-// matching how the ESP32-P4's LVGL keyboard is fully self-contained.
-
-const WIFI_KEYBOARD_ROWS_LETTERS = [
-  ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-  ['shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', 'backspace']
-];
-
-const WIFI_KEYBOARD_ROWS_SYMBOLS = [
-  ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-  ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')'],
-  ['-', '_', '=', '+', '.', ',', '?', '/', ':'],
-  ['shift', '~', '`', '\'', '"', ';', 'backspace']
-];
-
-function wifiKeyLabel(key) {
-  if (key === 'shift') return '⇧';
-  if (key === 'backspace') return '⌫';
-  if (wifiState.shiftActive && key.length === 1 && /[a-z]/.test(key)) return key.toUpperCase();
-  return key;
-}
-
-function applyWifiKeyPress(key) {
-  const input = wifiEl('wifi-password-input');
-
-  if (key === 'shift') {
-    wifiState.shiftActive = !wifiState.shiftActive;
-    buildWifiKeyboard();
-    return;
-  }
-
-  if (key === 'backspace') {
-    input.value = input.value.slice(0, -1);
-    return;
-  }
-
-  const char = wifiState.shiftActive && /[a-z]/.test(key) ? key.toUpperCase() : key;
-  input.value += char;
-
-  if (wifiState.shiftActive) {
-    wifiState.shiftActive = false;
-    buildWifiKeyboard();
-  }
-}
-
-function buildWifiKeyboard() {
-  const container = wifiEl('wifi-keyboard');
-  if (!container) return;
-  container.innerHTML = '';
-
-  const rows = wifiState.symbolsActive ? WIFI_KEYBOARD_ROWS_SYMBOLS : WIFI_KEYBOARD_ROWS_LETTERS;
-
-  rows.forEach((rowKeys) => {
-    const row = document.createElement('div');
-    row.className = 'wifi-keyboard-row';
-    rowKeys.forEach((key) => {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'wifi-key';
-      if (key === 'shift' || key === 'backspace') button.classList.add('wifi-key-wide');
-      button.textContent = wifiKeyLabel(key);
-      button.addEventListener('click', () => applyWifiKeyPress(key));
-      row.appendChild(button);
-    });
-    container.appendChild(row);
-  });
-
-  const bottomRow = document.createElement('div');
-  bottomRow.className = 'wifi-keyboard-row';
-
-  const symbolsToggle = document.createElement('button');
-  symbolsToggle.type = 'button';
-  symbolsToggle.className = 'wifi-key wifi-key-wide';
-  symbolsToggle.textContent = wifiState.symbolsActive ? 'ABC' : '123';
-  symbolsToggle.addEventListener('click', () => {
-    wifiState.symbolsActive = !wifiState.symbolsActive;
-    buildWifiKeyboard();
-  });
-
-  const spaceKey = document.createElement('button');
-  spaceKey.type = 'button';
-  spaceKey.className = 'wifi-key wifi-key-space';
-  spaceKey.textContent = 'space';
-  spaceKey.addEventListener('click', () => applyWifiKeyPress(' '));
-
-  bottomRow.appendChild(symbolsToggle);
-  bottomRow.appendChild(spaceKey);
-  container.appendChild(bottomRow);
-}
-
 function setupWifiViewEvents() {
   wifiEl('wifi-back-button').addEventListener('click', showListStep);
 
   wifiEl('wifi-connect-button').addEventListener('click', attemptConnect);
 
-  wifiEl('wifi-done-button').addEventListener('click', () => {
-    if (window.appView?.returnToHome) {
-      window.appView.returnToHome();
-    }
-  });
+  wifiEl('wifi-done-button').addEventListener('click', leaveWifiView);
 
   wifiEl('wifi-password-toggle').addEventListener('click', () => {
     const input = wifiEl('wifi-password-input');
@@ -369,7 +274,7 @@ async function pollWifiLinkStatus() {
     wifiState.consecutiveDisconnectedPolls = 0;
     wifiState.dismissedForThisOutage = false;
     if (wasRecovering && isWifiViewOpen() && wifiState.step === 'list') {
-      window.appView?.returnToHome?.();
+      leaveWifiView();
     }
     return;
   }
@@ -380,6 +285,7 @@ async function pollWifiLinkStatus() {
     && !isWifiViewOpen();
 
   if (shouldAutoSurface) {
+    wifiState.returnView = null;
     window.appView?.setViewMode?.(window.appView.VIEW_MODES.WIFI);
   }
 }
@@ -425,11 +331,20 @@ function setupWifiViewVisibilityWatcher() {
       if (wifiState.consecutiveDisconnectedPolls > 0) {
         wifiState.dismissedForThisOutage = true;
       }
+      wifiState.returnView = null;
     }
   });
 
   observer.observe(appShell, { attributes: true, attributeFilter: ['class'] });
 }
+
+// Opened from Settings, so Done comes back to Settings.
+function openWifiFrom(returnView) {
+  wifiState.returnView = returnView || null;
+  window.appView?.setViewMode?.(window.appView.VIEW_MODES.WIFI);
+}
+
+window.wifiScreen = { openFrom: openWifiFrom };
 
 function initializeWifiUi() {
   // Deliberately does NOT call ensureWifiViewBuilt() here -- the whole point

@@ -160,6 +160,8 @@
            competing with the views actually in regular rotation, causing
            them to get paged out to swap when idle and lag on the next
            swipe back to them -- see targets/pi/public/renderer/wifi.js. -->
+      <!-- Built lazily by settings.js on first open, like the WiFi screen. -->
+      <div class="view-layer view-settings" aria-hidden="true"></div>
       <div class="view-layer view-wifi" aria-hidden="true"></div>
       <div class="status-stack" aria-live="polite" aria-atomic="true">
         <div id="clock-status" class="status-line-round" hidden></div>
@@ -170,7 +172,9 @@
 
   <script src="renderer/clock.js"></script>
   <script src="renderer/weather.js"></script>
+  <script src="renderer/keyboard.js"></script>
   <script src="renderer/wifi.js"></script>
+  <script src="renderer/settings.js"></script>
   <script src="renderer/messages.js"></script>
   <script src="background-switcher.js"></script>
 </body>

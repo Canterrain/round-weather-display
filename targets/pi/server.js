@@ -1130,6 +1130,120 @@ app.post('/api/wifi/connect', requireLocalhost, async (req, res) => {
   }
 });
 
+// --- On-device settings (the swipe-down Settings screen) ---
+//
+// Mirrors the ESP32-P4's setup screen: the same fields, the same validation,
+// and the same "Save & Restart". Localhost-only like the WiFi API -- only the
+// clock itself may change its settings, never another device on the LAN.
+const SETTINGS_TEXT_MAX_LENGTH = 64;
+
+function pickSettings(cfg) {
+  return {
+    location: cfg.location || '',
+    roomName: cfg.roomName || '',
+    deviceId: cfg.deviceId || '',
+    messageSharing: cfg.messageSharing === 'shared' ? 'shared' : 'single',
+    defaultClockFace: cfg.defaultClockFace === 'analog' ? 'analog' : 'digital',
+    timeFormat: cfg.timeFormat === '24' ? '24' : '12',
+    leadingZero12h: cfg.leadingZero12h !== false,
+    units: cfg.units === 'metric' ? 'metric' : 'imperial',
+    nightShift: cfg.nightShift === true
+  };
+}
+
+function normalizeSettingsPayload(body) {
+  const text = (value, label) => {
+    const trimmed = typeof value === 'string' ? value.trim() : '';
+    if (!trimmed) throw new Error(`Enter a ${label} before saving.`);
+    if (trimmed.length > SETTINGS_TEXT_MAX_LENGTH) throw new Error(`The ${label} is too long.`);
+    return trimmed;
+  };
+  const oneOf = (value, allowed, fallback) => (allowed.includes(value) ? value : fallback);
+
+  return {
+    location: text(body?.location, 'City, State'),
+    roomName: text(body?.roomName, 'room name'),
+    deviceId: text(body?.deviceId, 'device ID'),
+    messageSharing: oneOf(body?.messageSharing, ['single', 'shared'], 'single'),
+    defaultClockFace: oneOf(body?.defaultClockFace, ['analog', 'digital'], 'digital'),
+    timeFormat: oneOf(body?.timeFormat, ['12', '24'], '12'),
+    leadingZero12h: body?.leadingZero12h !== false,
+    units: oneOf(body?.units, ['imperial', 'metric'], 'imperial'),
+    nightShift: body?.nightShift === true
+  };
+}
+
+// Write to a temp file then rename, so a power cut mid-save can't leave a
+// half-written config.json that stops the clock from starting.
+function writeConfigAtomic(cfg) {
+  const tmpPath = `${configPath}.tmp`;
+  fs.writeFileSync(tmpPath, JSON.stringify(cfg, null, 2));
+  fs.renameSync(tmpPath, configPath);
+}
+
+// Only restart when launched by the kiosk launcher (rwc.sh sets this), so
+// saving from a dev preview never runs stop.sh/start.sh on a dev machine.
+function scheduleKioskRestart() {
+  if (process.env.ROUND_CLOCK_KIOSK !== '1') return false;
+
+  const scriptsDir = path.join(__dirname, 'scripts');
+  setTimeout(() => {
+    // Detached in its own session so it survives stop.sh killing this server.
+    const child = require('child_process').spawn(
+      'bash',
+      ['-c', `sleep 1; bash "${scriptsDir}/stop.sh"; bash "${scriptsDir}/start.sh"`],
+      { detached: true, stdio: 'ignore' }
+    );
+    child.unref();
+  }, 300);
+  return true;
+}
+
+app.get('/api/settings', requireLocalhost, (req, res) => {
+  const cfg = loadConfig();
+  if (!cfg) return res.status(500).json({ error: 'Missing config.json' });
+  res.json(pickSettings(cfg));
+});
+
+app.post('/api/settings', requireLocalhost, async (req, res) => {
+  const cfg = loadConfig();
+  if (!cfg) return res.status(500).json({ error: 'Missing config.json' });
+
+  let next;
+  try {
+    next = normalizeSettingsPayload(req.body);
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
+  // Keys this screen doesn't edit (night shift hours, thresholds, ...) are
+  // kept as they are.
+  const updated = { ...cfg, ...next };
+
+  if (next.location !== cfg.location || typeof cfg.lat !== 'number' || typeof cfg.lon !== 'number') {
+    try {
+      const geo = await geocodeLocation(next.location);
+      updated.lat = geo.lat;
+      updated.lon = geo.lon;
+      updated.timezone = geo.timezone || 'auto';
+    } catch (error) {
+      console.error('Settings location lookup failed:', error.message);
+      return res.status(400).json({ error: `Couldn't find "${next.location}". Try City, State.` });
+    }
+  }
+
+  try {
+    writeConfigAtomic(updated);
+  } catch (error) {
+    console.error('Settings save failed:', error);
+    return res.status(500).json({ error: 'Could not save settings.' });
+  }
+
+  config = updated;
+  lastGoodPayload = null;
+  res.json({ ok: true, restarting: scheduleKioskRestart(), settings: pickSettings(updated) });
+});
+
 app.get('/weather', async (req, res) => {
   config = loadConfig();
   if (!config) return res.status(500).json({ error: 'Missing config.json' });
