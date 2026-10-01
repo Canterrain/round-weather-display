@@ -87,6 +87,10 @@ generate_font "lv_font_clock_time_144" 144 "0x30-0x39,0x3A"
 generate_font "lv_font_temp_105" 105 "0x2D,0x30-0x39,0xB0"
 generate_font "lv_font_temp_102" 102 "0x2D,0x30-0x39,0xB0"
 
+# Conditions view: wind speed inside the compass (the Pi uses 70px). Digits
+# plus "-" for the "--" placeholder before the first weather fetch.
+generate_font "lv_font_wind_speed_70" 70 "0x2D,0x30-0x39"
+
 "$SCRIPT_DIR/update-asset-source-manifest.sh"
 
 echo "Done. Regenerated fonts are in $OUTPUT_DIR -- rebuild the firmware to pick them up."

@@ -155,6 +155,11 @@ def convert_rows(
         bytes_per_pixel = 3
     elif fmt == "argb8888":
         bytes_per_pixel = 4
+    elif fmt == "a8":
+        # Alpha only: 1 byte/pixel. LVGL draws it in the object's
+        # image_recolor color, so one asset can be tinted per state at
+        # runtime (and costs a quarter of the flash of ARGB8888).
+        bytes_per_pixel = 1
     else:
         raise ValueError(f"Unsupported LVGL format {fmt}")
 
@@ -167,6 +172,10 @@ def convert_rows(
         for x, (red, green, blue, alpha) in enumerate(row):
             if dither and fmt != "argb8888":
                 red, green, blue = dither_rgb565(red, green, blue, x, y)
+            if fmt == "a8":
+                row_bytes[cursor] = alpha
+                cursor += 1
+                continue
             low, high = pack_rgb565(red, green, blue)
             if fmt == "rgb565":
                 row_bytes[cursor:cursor + 2] = [low, high]
@@ -244,6 +253,7 @@ def render_source(symbol: str, header_name: str, fmt: str, width: int, height: i
         "rgb565": "LV_COLOR_FORMAT_RGB565",
         "argb8565": "LV_COLOR_FORMAT_ARGB8565",
         "argb8888": "LV_COLOR_FORMAT_ARGB8888",
+        "a8": "LV_COLOR_FORMAT_A8",
     }[fmt]
     return f"""#include "lvgl.h"
 #include "{header_name}"
@@ -281,7 +291,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Convert a PNG into a compiled LVGL image descriptor.")
     parser.add_argument("--input", required=True, help="Input PNG file")
     parser.add_argument("--symbol", required=True, help="C symbol name")
-    parser.add_argument("--format", choices=("rgb565", "argb8565", "argb8888"), required=True)
+    parser.add_argument("--format", choices=("rgb565", "argb8565", "argb8888", "a8"), required=True)
     parser.add_argument("--output-c", required=True, help="Destination C source")
     parser.add_argument("--output-h", required=True, help="Destination header")
     parser.add_argument("--align", type=int, default=4, help="Stride alignment in bytes")

@@ -1,0 +1,4 @@
+<!-- Conditions-view column icon; same paths as targets/pi/public/index.html. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M16 4 V28 M5.6 10 L26.4 22 M5.6 22 L26.4 10 M12 6 L16 9 L20 6 M12 26 L16 23 L20 26"/>
+</svg>

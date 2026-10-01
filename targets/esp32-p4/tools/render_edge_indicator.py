@@ -11,8 +11,10 @@ None of that -- conic gradients, mask radial-gradients, or blur filters --
 has any SVG equivalent that cairosvg (this pipeline's rasterizer) actually
 implements, so this renders the identical math directly, pixel by pixel.
 
-Source of truth: targets/pi/public/style.css, `.message-edge-indicator::before`.
-Keep this in sync if that CSS ever changes.
+Source of truth: targets/pi/public/style.css, `.message-edge-indicator::before`
+(variant "message": red, left edge) and `.weather-edge-indicator::before`
+(variant "weather": the amber storm-alert glow, mirrored onto the right
+edge). Keep this in sync if that CSS ever changes.
 """
 
 from __future__ import annotations
@@ -48,6 +50,27 @@ ANGLE_STOPS = [
 ]
 COLOR_RGB = (255, 74, 74)
 
+# `.weather-edge-indicator::before`: same mask and blur, different angles.
+# The firmware stores this one as A8 and tints it amber at runtime.
+WEATHER_GRADIENT_FROM_DEG = 36.0
+WEATHER_ANGLE_STOPS = [
+    (0.0, 0.0),
+    (2.0, 0.0),
+    (12.0, 0.1),
+    (28.0, 0.34),
+    (52.0, 0.62),
+    (76.0, 0.34),
+    (92.0, 0.1),
+    (102.0, 0.0),
+    (360.0, 0.0),
+]
+WEATHER_COLOR_RGB = (255, 176, 64)
+
+VARIANTS = {
+    "message": (GRADIENT_FROM_DEG, ANGLE_STOPS, COLOR_RGB),
+    "weather": (WEATHER_GRADIENT_FROM_DEG, WEATHER_ANGLE_STOPS, WEATHER_COLOR_RGB),
+}
+
 # (radius_px_from_edge, alpha) stops from the CSS mask radial-gradient, where
 # radius is expressed as "farthest-side minus N px" per the original
 # `calc(100% - Npx)` values, converted here to absolute px from center.
@@ -78,7 +101,7 @@ def _piecewise_interp(x: np.ndarray, stops: list[tuple[float, float]]) -> np.nda
     return out
 
 
-def render_alpha(size: int) -> np.ndarray:
+def render_alpha(size: int, from_deg: float, angle_stops: list[tuple[float, float]]) -> np.ndarray:
     ys, xs = np.mgrid[0:size, 0:size].astype(np.float64)
     dx = xs - FACE_CENTER
     dy = ys - FACE_CENTER
@@ -86,9 +109,9 @@ def render_alpha(size: int) -> np.ndarray:
 
     # CSS conic-gradient angle: 0deg = 12 o'clock (up, -Y), increasing clockwise.
     angle_deg = np.degrees(np.arctan2(dx, -dy)) % 360.0
-    rel_deg = (angle_deg - GRADIENT_FROM_DEG) % 360.0
+    rel_deg = (angle_deg - from_deg) % 360.0
 
-    angle_alpha = _piecewise_interp(rel_deg, ANGLE_STOPS)
+    angle_alpha = _piecewise_interp(rel_deg, angle_stops)
     radius_alpha = _piecewise_interp(radius, RADIUS_STOPS)
     # Beyond the mask's own farthest-side radius, CSS masks clip to nothing.
     radius_alpha = np.where(radius <= MASK_BOX_RADIUS, radius_alpha, 0.0)
@@ -125,13 +148,14 @@ def gaussian_blur_rgba(image: Image.Image, radius: float) -> Image.Image:
     return Image.fromarray(out, mode="RGBA")
 
 
-def render(output_path: Path, size: int = STAGE_SIZE) -> None:
-    alpha = render_alpha(size)
+def render(output_path: Path, size: int = STAGE_SIZE, variant: str = "message") -> None:
+    from_deg, angle_stops, color_rgb = VARIANTS[variant]
+    alpha = render_alpha(size, from_deg, angle_stops)
 
     rgba = np.zeros((size, size, 4), dtype=np.uint8)
-    rgba[..., 0] = COLOR_RGB[0]
-    rgba[..., 1] = COLOR_RGB[1]
-    rgba[..., 2] = COLOR_RGB[2]
+    rgba[..., 0] = color_rgb[0]
+    rgba[..., 1] = color_rgb[1]
+    rgba[..., 2] = color_rgb[2]
     rgba[..., 3] = np.clip(alpha * 255.0, 0, 255).astype(np.uint8)
 
     image = Image.fromarray(rgba, mode="RGBA")
@@ -173,11 +197,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", required=True, help="Output PNG path")
     parser.add_argument("--size", type=int, default=STAGE_SIZE)
+    parser.add_argument("--variant", choices=sorted(VARIANTS), default="message")
     args = parser.parse_args()
 
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    render(output_path, args.size)
+    render(output_path, args.size, args.variant)
     return 0
 
 

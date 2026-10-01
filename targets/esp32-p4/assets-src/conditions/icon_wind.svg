@@ -1,0 +1,6 @@
+<!-- Conditions-view column icon; same paths as targets/pi/public/index.html. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M4 12 H19 a4 4 0 1 0 -4 -4"/>
+  <path d="M4 18 H25 a4 4 0 1 1 -4 4"/>
+  <path d="M4 24 H13"/>
+</svg>

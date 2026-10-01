@@ -23,6 +23,12 @@
 #include "assets/analog_second_hand.h"
 #include "assets/analog_stage_day.h"
 #include "assets/analog_stage_night.h"
+#include "assets/conditions_edge_indicator.h"
+#include "assets/conditions_icon_pressure.h"
+#include "assets/conditions_icon_rain.h"
+#include "assets/conditions_icon_snow.h"
+#include "assets/conditions_icon_wind.h"
+#include "assets/conditions_wind_arrow.h"
 #include "assets/digital_stage_day.h"
 #include "assets/digital_stage_night.h"
 #include "assets/forecast_tomorrow_frame_day.h"
@@ -30,6 +36,7 @@
 #include "assets/lv_font_clock_time_144.h"
 #include "assets/lv_font_temp_102.h"
 #include "assets/lv_font_temp_105.h"
+#include "assets/lv_font_wind_speed_70.h"
 #include "assets/round_stage_day.h"
 #include "assets/round_stage_night.h"
 #include "assets/weather_icon_clear_day.h"
@@ -167,9 +174,37 @@
 #define FORECAST_ROW3_Y 640
 #define FORECAST_ROW4_X 545
 #define FORECAST_ROW4_Y 600
+/* Conditions view. Positions are in the Pi's 760px face coordinates
+ * (targets/pi/public/style.css, .conditions-*) so the two stay comparable;
+ * the face container is 760px and centered like the Pi's. */
+#define COND_FACE_SIZE 760
+#define COND_FACE_CENTER (COND_FACE_SIZE / 2)
+/* Baseline radii of the curved headline/detail, same as the Pi's SVG arcs. */
+#define COND_HEADLINE_RADIUS 322
+#define COND_DETAIL_RADIUS 286
+#define COND_HEADLINE_MAX_PX 600
+#define COND_DETAIL_MAX_PX 500
+#define COND_DIAL_SIZE 334
+#define COND_DIAL_TOP 122
+/* The dial is drawn from the Pi's 400px compass SVG at 334/400 scale. */
+#define COND_DIAL_SCALE (334.0 / 400.0)
+#define COND_TICK_COUNT 20
+#define COND_WIND_CENTER_Y 292
+#define COND_WIND_WIDTH 190
+#define COND_DIVIDER_TOP 470
+#define COND_DIVIDER_WIDTH 440
+#define COND_COLUMNS_TOP 506
+#define COND_COLUMN_COUNT 3
+/* 1 : 1.1 : 1 of 520px, the middle (pressure) column a touch wider. */
+#define COND_COLUMN_SIDE_WIDTH 168
+#define COND_COLUMN_MIDDLE_WIDTH 184
+#define COND_COLUMN_PAD 8
+/* Must match the crop offset render_edge_indicator.py prints for
+ * --variant weather (scripts/generate-conditions-assets.sh). */
+#define CONDITIONS_EDGE_INDICATOR_X 569
+#define CONDITIONS_EDGE_INDICATOR_Y 107
 #define DAY_COUNT APP_FORECAST_DAYS
 #define FORECAST_ROW_COUNT 4
-#define SETUP_SWIPE_TOP_ZONE_HEIGHT 90
 #define SETUP_KEYBOARD_BOTTOM_OFFSET -150
 #define SETUP_KEYBOARD_HEIGHT 200
 #define SETUP_KEYBOARD_WIDTH 620
@@ -192,6 +227,7 @@ typedef enum {
   APP_VIEW_ANALOG = 0,
   APP_VIEW_DIGITAL,
   APP_VIEW_FORECAST,
+  APP_VIEW_CONDITIONS,
   APP_VIEW_MESSAGE
 } app_view_mode_t;
 
@@ -200,6 +236,7 @@ typedef struct {
   lv_obj_t *analog_view;
   lv_obj_t *digital_view;
   lv_obj_t *forecast_view;
+  lv_obj_t *conditions_view;
   lv_obj_t *message_view;
   lv_obj_t *gesture_layer;
   lv_obj_t *night_overlay;
@@ -273,6 +310,25 @@ typedef struct {
   lv_obj_t *forecast_row_summary_labels[FORECAST_ROW_COUNT];
   lv_obj_t *forecast_row_icons[FORECAST_ROW_COUNT];
   lv_obj_t *forecast_row_temps_labels[FORECAST_ROW_COUNT];
+  lv_obj_t *conditions_stage_image;
+  lv_obj_t *conditions_headline;
+  lv_obj_t *conditions_detail;
+  lv_obj_t *conditions_ring;
+  lv_obj_t *conditions_ticks[COND_TICK_COUNT];
+  lv_obj_t *conditions_cardinals[4];
+  lv_obj_t *conditions_wind_arrow;
+  lv_obj_t *conditions_speed_label;
+  lv_obj_t *conditions_unit_label;
+  lv_obj_t *conditions_from_label;
+  lv_obj_t *conditions_gust_label;
+  lv_obj_t *conditions_divider_lines[2];
+  lv_obj_t *conditions_change_label;
+  lv_obj_t *conditions_columns[COND_COLUMN_COUNT];
+  lv_obj_t *conditions_column_icons[COND_COLUMN_COUNT];
+  lv_obj_t *conditions_column_labels[COND_COLUMN_COUNT];
+  lv_obj_t *conditions_column_values[COND_COLUMN_COUNT];
+  lv_obj_t *analog_weather_indicator;
+  lv_obj_t *digital_weather_indicator;
   lv_obj_t *message_stage_image;
   lv_obj_t *message_face;
   lv_obj_t *message_title_label;
@@ -287,6 +343,13 @@ typedef struct {
   lv_obj_t *second_hand;
   app_view_mode_t current_view;
   app_view_mode_t last_home_view;
+  /* The weather views left of home, nearest first. Snapshotted when leaving
+   * home so an alert starting or clearing mid-visit doesn't reshuffle the
+   * row; the new order applies from the next swipe out of home. */
+  app_view_mode_t weather_row[2];
+  bool weather_alert_active;
+  lv_point_t setup_gesture_start;
+  bool setup_gesture_tracking;
   lv_point_t gesture_start;
   bool gesture_tracking;
   bool clock_is_estimated;
@@ -298,6 +361,7 @@ typedef struct {
   bool has_important_messages;
   bool pending_weather_diag_logged;
   lv_point_precise_t analog_tick_points[ANALOG_TICK_COUNT][2];
+  lv_point_precise_t conditions_tick_points[COND_TICK_COUNT][2];
   lv_point_precise_t hour_hand_points[2];
   lv_point_precise_t minute_hand_points[2];
   lv_point_precise_t second_hand_points[2];
@@ -489,6 +553,27 @@ static lv_color_t color_warning(void)
 static lv_color_t color_important(void)
 {
   return lv_color_hex(0xf6d6b1);
+}
+
+/* Conditions-view palette, from the Pi's .conditions-* rules. */
+static lv_color_t color_conditions_accent(void)
+{
+  return lv_color_hex(0xb8ddff);
+}
+
+static lv_color_t color_alert(void)
+{
+  return lv_color_hex(0xffc466);
+}
+
+static lv_color_t color_alert_soft(void)
+{
+  return lv_color_hex(0xffd296);
+}
+
+static lv_color_t color_night_alert(void)
+{
+  return lv_color_hex(0xec9682);
 }
 
 static lv_obj_t *app_screen_active(void)
@@ -1068,6 +1153,10 @@ static void request_setup_scan(void);
 static void hide_setup_keyboard(void);
 static void open_setup_overlay(void);
 static void apply_view_night_state(bool active);
+static void apply_conditions_colors(void);
+static void update_weather_indicator_state(void);
+static void update_conditions_view(void);
+static lv_obj_t *create_weather_indicator(lv_obj_t *view);
 static void setup_restart_timer_cb(lv_timer_t *timer);
 static void setup_autopen_timer_cb(lv_timer_t *timer);
 static void setup_keyboard_event_cb(lv_event_t *event);
@@ -1122,11 +1211,6 @@ static bool clock_is_stale(void)
 static bool is_setup_overlay_visible(void)
 {
   return s_ui.setup_overlay != NULL && !lv_obj_has_flag(s_ui.setup_overlay, LV_OBJ_FLAG_HIDDEN);
-}
-
-static bool is_top_edge_swipe_start(const lv_point_t *point)
-{
-  return point != NULL && point->y <= SETUP_SWIPE_TOP_ZONE_HEIGHT;
 }
 
 static void update_setup_scan_status(const char *text, lv_color_t color)
@@ -2404,7 +2488,9 @@ static void apply_view_night_state(bool active)
   apply_forecast_night_state(active);
   apply_message_night_state(active);
   apply_status_night_state(active);
+  apply_conditions_colors();
   update_message_indicator_state();
+  update_weather_indicator_state();
   update_night_overlay_visibility();
 }
 
@@ -2441,6 +2527,14 @@ static void set_view_mode(app_view_mode_t next_view)
     }
   }
 
+  if (s_ui.conditions_view != NULL) {
+    if (next_view == APP_VIEW_CONDITIONS) {
+      lv_obj_clear_flag(s_ui.conditions_view, LV_OBJ_FLAG_HIDDEN);
+    } else {
+      lv_obj_add_flag(s_ui.conditions_view, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+
   if (s_ui.message_view != NULL) {
     if (next_view == APP_VIEW_MESSAGE) {
       lv_obj_clear_flag(s_ui.message_view, LV_OBJ_FLAG_HIDDEN);
@@ -2460,6 +2554,31 @@ static void set_view_mode(app_view_mode_t next_view)
   apply_view_night_state(s_ui.night_overlay_active);
 }
 
+/* During a storm alert, conditions jumps ahead of the forecast so one swipe
+ * from home lands on it; the forecast is still one more swipe away. */
+static void snapshot_weather_row(void)
+{
+  s_ui.weather_row[0] = s_ui.weather_alert_active ? APP_VIEW_CONDITIONS : APP_VIEW_FORECAST;
+  s_ui.weather_row[1] = s_ui.weather_alert_active ? APP_VIEW_FORECAST : APP_VIEW_CONDITIONS;
+}
+
+static int weather_row_index(app_view_mode_t view)
+{
+  for (int i = 0; i < 2; ++i) {
+    if (s_ui.weather_row[i] == view) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/* Same map as the Pi (shared/spec/product-spec.md, Navigation Contract):
+ * only the configured face is home, and every screen is a fixed neighbour
+ * of home that returns with the opposite swipe:
+ *   right -> messages
+ *   left  -> forecast -> conditions (conditions first during an alert)
+ *   down  -> Settings (anywhere on the face)
+ * Swipe up from home is reserved for a future view below home. */
 static void handle_swipe(int delta_x, int delta_y)
 {
   if (is_setup_overlay_visible()) {
@@ -2468,24 +2587,26 @@ static void handle_swipe(int delta_x, int delta_y)
 
   int abs_x = LV_ABS(delta_x);
   int abs_y = LV_ABS(delta_y);
+  bool is_home = s_ui.current_view == APP_VIEW_ANALOG || s_ui.current_view == APP_VIEW_DIGITAL;
 
   if (abs_x >= SWIPE_THRESHOLD_PX && (abs_x * 10) > (abs_y * SWIPE_AXIS_RATIO_X10)) {
-    if (s_ui.current_view == APP_VIEW_ANALOG) {
+    if (is_home) {
       if (delta_x < 0) {
-        set_view_mode(APP_VIEW_FORECAST);
+        snapshot_weather_row();
+        set_view_mode(s_ui.weather_row[0]);
       } else {
         set_view_mode(APP_VIEW_MESSAGE);
       }
       return;
     }
 
-    if (s_ui.current_view == APP_VIEW_DIGITAL && delta_x > 0) {
-      set_view_mode(APP_VIEW_MESSAGE);
-      return;
-    }
-
-    if (s_ui.current_view == APP_VIEW_FORECAST && delta_x > 0) {
-      set_view_mode(s_ui.last_home_view);
+    int row_index = weather_row_index(s_ui.current_view);
+    if (row_index >= 0) {
+      if (delta_x < 0 && row_index == 0) {
+        set_view_mode(s_ui.weather_row[1]);
+      } else if (delta_x > 0) {
+        set_view_mode(row_index == 0 ? s_ui.last_home_view : s_ui.weather_row[0]);
+      }
       return;
     }
 
@@ -2496,13 +2617,8 @@ static void handle_swipe(int delta_x, int delta_y)
   }
 
   if (abs_y >= SWIPE_THRESHOLD_PX && (abs_y * 10) > (abs_x * SWIPE_AXIS_RATIO_X10)) {
-    if (s_ui.current_view == APP_VIEW_ANALOG && delta_y > 0) {
-      set_view_mode(APP_VIEW_DIGITAL);
-      return;
-    }
-
-    if (s_ui.current_view == APP_VIEW_DIGITAL && delta_y < 0) {
-      set_view_mode(APP_VIEW_ANALOG);
+    if (is_home && delta_y > 0) {
+      open_setup_overlay();
     }
   }
 }
@@ -2529,13 +2645,6 @@ static void gesture_layer_event_cb(lv_event_t *event)
     int delta_y = point.y - s_ui.gesture_start.y;
     s_ui.gesture_tracking = false;
 
-    if (!is_setup_overlay_visible()
-        && is_top_edge_swipe_start(&s_ui.gesture_start)
-        && delta_y >= SWIPE_THRESHOLD_PX
-        && (LV_ABS(delta_y) * 10) > (LV_ABS(delta_x) * SWIPE_AXIS_RATIO_X10)) {
-      open_setup_overlay();
-      return;
-    }
     if (s_ui.current_view == APP_VIEW_MESSAGE
         && LV_ABS(delta_x) < 12
         && LV_ABS(delta_y) < 12
@@ -2599,6 +2708,7 @@ static void build_analog_view(lv_obj_t *parent)
   lv_image_set_src(s_ui.analog_edge_indicator, &analog_edge_indicator);
   lv_obj_align(s_ui.analog_edge_indicator, LV_ALIGN_TOP_LEFT, ANALOG_EDGE_INDICATOR_X, ANALOG_EDGE_INDICATOR_Y);
   lv_obj_add_flag(s_ui.analog_edge_indicator, LV_OBJ_FLAG_HIDDEN);
+  s_ui.analog_weather_indicator = create_weather_indicator(s_ui.analog_view);
 
   s_ui.analog_day_label = create_label(
     s_ui.analog_face, &lv_font_montserrat_32, color_text_primary(), LV_TEXT_ALIGN_CENTER, "Thursday"
@@ -2719,6 +2829,7 @@ static void build_digital_view(lv_obj_t *parent)
   lv_image_set_src(s_ui.digital_edge_indicator, &analog_edge_indicator);
   lv_obj_align(s_ui.digital_edge_indicator, LV_ALIGN_TOP_LEFT, ANALOG_EDGE_INDICATOR_X, ANALOG_EDGE_INDICATOR_Y);
   lv_obj_add_flag(s_ui.digital_edge_indicator, LV_OBJ_FLAG_HIDDEN);
+  s_ui.digital_weather_indicator = create_weather_indicator(s_ui.digital_view);
 
   s_ui.digital_day_label = create_label(
     digital_face, &lv_font_montserrat_32, color_digital_accent(), LV_TEXT_ALIGN_CENTER, "THURSDAY"
@@ -2962,6 +3073,339 @@ static void build_forecast_view(lv_obj_t *parent)
   }
 }
 
+/* Text curved along the top of the circle.
+ *
+ * Not lv_arclabel: this build has LV_USE_FLOAT off, so lv_arclabel places
+ * glyphs with lv_trigo_sin/cos, which take whole degrees -- every letter
+ * snaps to the nearest degree (~5.6px at this radius) and the spacing goes
+ * uneven ("Ca lm", "fort he"). This does the same layout in double
+ * precision: each glyph's baseline midpoint sits exactly on the arc
+ * (radius = baseline radius, like the Pi's SVG textPath), spaced by its
+ * kerned advance and rotated to the tangent. */
+typedef struct {
+  char text[STORM_TEXT_LEN];
+  int32_t radius;
+} conditions_arc_text_t;
+
+static conditions_arc_text_t s_headline_arc;
+static conditions_arc_text_t s_detail_arc;
+
+/* Minimal UTF-8 decode -- the wording is ASCII plus the degree sign. */
+static uint32_t next_utf8_letter(const char *text, size_t *index)
+{
+  const unsigned char *p = (const unsigned char *) text + *index;
+  if (p[0] == 0) {
+    return 0;
+  }
+  if (p[0] < 0x80) {
+    *index += 1;
+    return p[0];
+  }
+  if ((p[0] & 0xE0) == 0xC0 && p[1] != 0) {
+    *index += 2;
+    return ((uint32_t) (p[0] & 0x1F) << 6) | (p[1] & 0x3F);
+  }
+  if ((p[0] & 0xF0) == 0xE0 && p[1] != 0 && p[2] != 0) {
+    *index += 3;
+    return ((uint32_t) (p[0] & 0x0F) << 12) | ((uint32_t) (p[1] & 0x3F) << 6) | (p[2] & 0x3F);
+  }
+  *index += 1;
+  return '?';
+}
+
+static int32_t arc_text_width(const char *text, const lv_font_t *font)
+{
+  int32_t total = 0;
+  size_t i = 0;
+  uint32_t letter = next_utf8_letter(text, &i);
+  while (letter != 0) {
+    size_t peek = i;
+    uint32_t next = next_utf8_letter(text, &peek);
+    total += lv_font_get_glyph_width(font, letter, next);
+    letter = next;
+    i = peek;
+  }
+  return total;
+}
+
+static void conditions_arc_draw_cb(lv_event_t *event)
+{
+  lv_obj_t *obj = lv_event_get_current_target(event);
+  const conditions_arc_text_t *arc = lv_obj_get_user_data(obj);
+  if (arc == NULL || arc->text[0] == '\0') {
+    return;
+  }
+
+  lv_layer_t *layer = lv_event_get_layer(event);
+  lv_area_t coords;
+  lv_obj_get_coords(obj, &coords);
+  const double cx = coords.x1 + lv_area_get_width(&coords) / 2.0;
+  const double cy = coords.y1 + lv_area_get_height(&coords) / 2.0;
+  const double r = arc->radius;
+
+  const lv_font_t *font = lv_obj_get_style_text_font(obj, LV_PART_MAIN);
+  lv_draw_letter_dsc_t dsc;
+  lv_draw_letter_dsc_init(&dsc);
+  dsc.font = font;
+  dsc.color = lv_obj_get_style_text_color(obj, LV_PART_MAIN);
+  dsc.opa = LV_OPA_MIX2(layer->opa, lv_obj_get_style_text_opa(obj, LV_PART_MAIN));
+
+  /* Centered on 12 o'clock (-90deg in screen coordinates), reading
+   * clockwise; `angle` tracks the left edge of the next glyph. */
+  double angle = -M_PI / 2.0 - (arc_text_width(arc->text, font) / 2.0) / r;
+  size_t i = 0;
+  uint32_t letter = next_utf8_letter(arc->text, &i);
+  while (letter != 0) {
+    size_t peek = i;
+    uint32_t next = next_utf8_letter(arc->text, &peek);
+    const double advance = lv_font_get_glyph_width(font, letter, next);
+    const double mid = angle + (advance / 2.0) / r;
+
+    if (letter != ' ') {
+      /* lv_draw_letter() treats `point` as the glyph's pivot: the middle of
+       * its advance on the baseline (lv_draw_unit_draw_letter moves the
+       * glyph box back by that pivot before drawing). */
+      lv_point_t point = {
+        .x = (int32_t) lround(cx + r * cos(mid)),
+        .y = (int32_t) lround(cy + r * sin(mid)),
+      };
+      dsc.unicode = letter;
+      dsc.rotation = (int32_t) lround((mid * 180.0 / M_PI + 90.0) * 10.0);
+      lv_draw_letter(layer, &dsc, &point);
+    }
+
+    angle += advance / r;
+    letter = next;
+    i = peek;
+  }
+}
+
+static lv_obj_t *create_conditions_arc_label(lv_obj_t *face, conditions_arc_text_t *arc, const lv_font_t *font, lv_color_t color, int32_t radius)
+{
+  lv_obj_t *obj = lv_obj_create(face);
+  clear_container_chrome(obj);
+  lv_obj_set_size(obj, COND_FACE_SIZE, COND_FACE_SIZE);
+  lv_obj_align(obj, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_text_font(obj, font, 0);
+  lv_obj_set_style_text_color(obj, color, 0);
+  arc->text[0] = '\0';
+  arc->radius = radius;
+  lv_obj_set_user_data(obj, arc);
+  lv_obj_add_event_cb(obj, conditions_arc_draw_cb, LV_EVENT_DRAW_MAIN, NULL);
+  return obj;
+}
+
+static void set_conditions_arc_text(lv_obj_t *obj, const char *text, const lv_font_t *font)
+{
+  conditions_arc_text_t *arc = lv_obj_get_user_data(obj);
+  if (arc == NULL) {
+    return;
+  }
+  snprintf(arc->text, sizeof(arc->text), "%s", text != NULL ? text : "");
+  lv_obj_set_style_text_font(obj, font, 0);
+  lv_obj_invalidate(obj);
+}
+
+static void build_conditions_view(lv_obj_t *parent)
+{
+  s_ui.conditions_view = lv_obj_create(parent);
+  lv_obj_set_size(s_ui.conditions_view, LV_PCT(100), LV_PCT(100));
+  /* Same background treatment as the forecast view: every screen follows
+   * the same background logic. */
+  lv_obj_set_style_bg_color(s_ui.conditions_view, color_bg(), 0);
+  lv_obj_set_style_bg_opa(s_ui.conditions_view, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(s_ui.conditions_view, 0, 0);
+  lv_obj_set_style_pad_all(s_ui.conditions_view, 0, 0);
+  lv_obj_set_scrollbar_mode(s_ui.conditions_view, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_add_flag(s_ui.conditions_view, LV_OBJ_FLAG_HIDDEN);
+
+  s_ui.conditions_stage_image = lv_image_create(s_ui.conditions_view);
+  lv_image_set_src(s_ui.conditions_stage_image, &round_stage_day);
+  lv_obj_align(s_ui.conditions_stage_image, LV_ALIGN_CENTER, 0, 0);
+
+  lv_obj_t *face = lv_obj_create(s_ui.conditions_view);
+  lv_obj_set_size(face, COND_FACE_SIZE, COND_FACE_SIZE);
+  lv_obj_align(face, LV_ALIGN_CENTER, 0, 0);
+  clear_container_chrome(face);
+
+  /* Headline and detail curve along the top of the circle. */
+  s_ui.conditions_headline = create_conditions_arc_label(
+    face, &s_headline_arc, &lv_font_montserrat_32, color_text_primary(), COND_HEADLINE_RADIUS
+  );
+  set_conditions_arc_text(s_ui.conditions_headline, "Checking the weather...", &lv_font_montserrat_32);
+  s_ui.conditions_detail = create_conditions_arc_label(
+    face, &s_detail_arc, &lv_font_montserrat_18, lv_color_hex(0xebf2ff), COND_DETAIL_RADIUS
+  );
+  lv_obj_set_style_text_opa(s_ui.conditions_detail, LV_OPA_80, 0);
+
+  /* Compass, drawn from the Pi's 400px compass SVG at COND_DIAL_SCALE. */
+  lv_obj_t *dial = lv_obj_create(face);
+  lv_obj_set_size(dial, COND_DIAL_SIZE, COND_DIAL_SIZE);
+  lv_obj_align(dial, LV_ALIGN_TOP_MID, 0, COND_DIAL_TOP);
+  clear_container_chrome(dial);
+
+  const double dial_c = COND_DIAL_SIZE / 2.0;
+  const int32_t ring_d = (int32_t) lround(2 * 182 * COND_DIAL_SCALE);
+  s_ui.conditions_ring = lv_obj_create(dial);
+  lv_obj_set_size(s_ui.conditions_ring, ring_d, ring_d);
+  lv_obj_align(s_ui.conditions_ring, LV_ALIGN_CENTER, 0, 0);
+  lv_obj_set_style_radius(s_ui.conditions_ring, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_bg_color(s_ui.conditions_ring, lv_color_hex(0x354e7e), 0);
+  lv_obj_set_style_bg_opa(s_ui.conditions_ring, 31, 0);
+  lv_obj_set_style_border_color(s_ui.conditions_ring, lv_color_hex(0xd6e2f0), 0);
+  lv_obj_set_style_border_opa(s_ui.conditions_ring, 66, 0);
+  lv_obj_set_style_border_width(s_ui.conditions_ring, 2, 0);
+  lv_obj_set_style_pad_all(s_ui.conditions_ring, 0, 0);
+  lv_obj_remove_flag(s_ui.conditions_ring, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_scrollbar_mode(s_ui.conditions_ring, LV_SCROLLBAR_MODE_OFF);
+
+  /* Ticks every 15deg; the cardinal letters stand in for the 90deg ones. */
+  int tick = 0;
+  for (int deg = 0; deg < 360 && tick < COND_TICK_COUNT; deg += 15) {
+    if (deg % 90 == 0) {
+      continue;
+    }
+    bool major = deg % 45 == 0;
+    double rad = deg * M_PI / 180.0;
+    double outer = 172 * COND_DIAL_SCALE;
+    double inner = (major ? 156 : 164) * COND_DIAL_SCALE;
+    s_ui.conditions_tick_points[tick][0] = (lv_point_precise_t) {
+      .x = (lv_value_precise_t) (dial_c + outer * sin(rad)),
+      .y = (lv_value_precise_t) (dial_c - outer * cos(rad)),
+    };
+    s_ui.conditions_tick_points[tick][1] = (lv_point_precise_t) {
+      .x = (lv_value_precise_t) (dial_c + inner * sin(rad)),
+      .y = (lv_value_precise_t) (dial_c - inner * cos(rad)),
+    };
+    lv_obj_t *line = lv_line_create(dial);
+    lv_line_set_points_mutable(line, s_ui.conditions_tick_points[tick], 2);
+    lv_obj_set_style_line_width(line, major ? 3 : 2, 0);
+    lv_obj_set_style_line_rounded(line, true, 0);
+    lv_obj_set_style_line_color(line, lv_color_hex(major ? 0xf4f8ff : 0xe0e9f7), 0);
+    lv_obj_set_style_line_opa(line, major ? 184 : 87, 0);
+    lv_obj_remove_flag(line, LV_OBJ_FLAG_CLICKABLE);
+    s_ui.conditions_ticks[tick++] = line;
+  }
+
+  static const char *const CARDINAL_TEXT[4] = {"N", "E", "S", "W"};
+  for (int i = 0; i < 4; ++i) {
+    double rad = i * 90 * M_PI / 180.0;
+    double r = 148 * COND_DIAL_SCALE;
+    lv_obj_t *label = create_label(dial, &lv_font_montserrat_24, lv_color_hex(0xebf2ff), LV_TEXT_ALIGN_CENTER, CARDINAL_TEXT[i]);
+    lv_obj_set_style_text_opa(label, 184, 0);
+    lv_obj_align(label, LV_ALIGN_CENTER, (int32_t) lround(r * sin(rad)), (int32_t) lround(-r * cos(rad)));
+    s_ui.conditions_cardinals[i] = label;
+  }
+
+  /* Weathervane-style arrow (A8, tinted at runtime), rotated about the dial
+   * center to the direction the wind comes FROM; fletching upwind, head
+   * downwind. */
+  s_ui.conditions_wind_arrow = lv_image_create(dial);
+  lv_image_set_src(s_ui.conditions_wind_arrow, &conditions_wind_arrow);
+  lv_obj_align(s_ui.conditions_wind_arrow, LV_ALIGN_CENTER, 0, 0);
+  lv_image_set_pivot(s_ui.conditions_wind_arrow, conditions_wind_arrow.header.w / 2, conditions_wind_arrow.header.h / 2);
+  lv_obj_set_style_image_recolor(s_ui.conditions_wind_arrow, color_conditions_accent(), 0);
+  lv_obj_set_style_image_recolor_opa(s_ui.conditions_wind_arrow, LV_OPA_COVER, 0);
+  lv_obj_add_flag(s_ui.conditions_wind_arrow, LV_OBJ_FLAG_HIDDEN);
+
+  /* Readout inside the compass, centered at the Pi's 292px. */
+  lv_obj_t *wind = lv_obj_create(face);
+  clear_container_chrome(wind);
+  lv_obj_set_size(wind, COND_WIND_WIDTH, LV_SIZE_CONTENT);
+  lv_obj_set_layout(wind, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(wind, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(wind, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(wind, 2, 0);
+  lv_obj_align(wind, LV_ALIGN_CENTER, 0, COND_WIND_CENTER_Y - COND_FACE_CENTER);
+
+  lv_obj_t *speed_row = lv_obj_create(wind);
+  clear_container_chrome(speed_row);
+  lv_obj_set_size(speed_row, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_layout(speed_row, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(speed_row, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(speed_row, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
+  lv_obj_set_style_pad_column(speed_row, 8, 0);
+  s_ui.conditions_speed_label = create_label(speed_row, &lv_font_wind_speed_70, color_text_primary(), LV_TEXT_ALIGN_CENTER, "--");
+  s_ui.conditions_unit_label = create_label(speed_row, &lv_font_montserrat_24, lv_color_hex(0xebf2ff), LV_TEXT_ALIGN_LEFT, "mph");
+  lv_obj_set_style_text_opa(s_ui.conditions_unit_label, 184, 0);
+  lv_obj_set_style_pad_bottom(s_ui.conditions_unit_label, 10, 0);
+
+  s_ui.conditions_from_label = create_label(wind, &lv_font_montserrat_18, lv_color_hex(0xe8f0fb), LV_TEXT_ALIGN_CENTER, "");
+  lv_obj_set_width(s_ui.conditions_from_label, LV_PCT(100));
+  s_ui.conditions_gust_label = create_label(wind, &lv_font_montserrat_18, lv_color_hex(0xe8f0fb), LV_TEXT_ALIGN_CENTER, "");
+  lv_obj_set_width(s_ui.conditions_gust_label, LV_PCT(100));
+
+  /* "Conditions changing / may change / steady" */
+  lv_obj_t *divider = lv_obj_create(face);
+  clear_container_chrome(divider);
+  lv_obj_set_size(divider, COND_DIVIDER_WIDTH, LV_SIZE_CONTENT);
+  lv_obj_align(divider, LV_ALIGN_TOP_MID, 0, COND_DIVIDER_TOP);
+  lv_obj_set_layout(divider, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(divider, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(divider, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_column(divider, 14, 0);
+  for (int i = 0; i < 2; ++i) {
+    lv_obj_t *line = lv_obj_create(divider);
+    clear_container_chrome(line);
+    lv_obj_set_height(line, 1);
+    lv_obj_set_flex_grow(line, 1);
+    lv_obj_set_style_bg_color(line, color_conditions_accent(), 0);
+    lv_obj_set_style_bg_opa(line, LV_OPA_40, 0);
+    s_ui.conditions_divider_lines[i] = line;
+    if (i == 0) {
+      s_ui.conditions_change_label = create_label(divider, &lv_font_montserrat_18, color_conditions_accent(), LV_TEXT_ALIGN_CENTER, "");
+    }
+  }
+
+  /* Three columns: icon, label, one value. */
+  lv_obj_t *columns = lv_obj_create(face);
+  clear_container_chrome(columns);
+  lv_obj_set_size(columns, 2 * COND_COLUMN_SIDE_WIDTH + COND_COLUMN_MIDDLE_WIDTH, LV_SIZE_CONTENT);
+  lv_obj_align(columns, LV_ALIGN_TOP_MID, 0, COND_COLUMNS_TOP);
+  lv_obj_set_layout(columns, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(columns, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(columns, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+
+  static const char *const COLUMN_LABELS[COND_COLUMN_COUNT] = {"WIND", "PRESSURE", "RAIN"};
+  const lv_image_dsc_t *column_icons[COND_COLUMN_COUNT] = {
+    &conditions_icon_wind, &conditions_icon_pressure, &conditions_icon_rain
+  };
+  for (int i = 0; i < COND_COLUMN_COUNT; ++i) {
+    lv_obj_t *column = lv_obj_create(columns);
+    clear_container_chrome(column);
+    lv_obj_set_size(column, i == 1 ? COND_COLUMN_MIDDLE_WIDTH : COND_COLUMN_SIDE_WIDTH, LV_SIZE_CONTENT);
+    lv_obj_set_style_pad_hor(column, COND_COLUMN_PAD, 0);
+    lv_obj_set_layout(column, LV_LAYOUT_FLEX);
+    lv_obj_set_flex_flow(column, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(column, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(column, 3, 0);
+    if (i > 0) {
+      lv_obj_set_style_border_side(column, LV_BORDER_SIDE_LEFT, 0);
+      lv_obj_set_style_border_width(column, 1, 0);
+      lv_obj_set_style_border_color(column, color_conditions_accent(), 0);
+      lv_obj_set_style_border_opa(column, 46, 0);
+    }
+
+    lv_obj_t *icon = lv_image_create(column);
+    lv_image_set_src(icon, column_icons[i]);
+    lv_obj_set_style_image_recolor(icon, color_conditions_accent(), 0);
+    lv_obj_set_style_image_recolor_opa(icon, LV_OPA_COVER, 0);
+
+    lv_obj_t *label = create_label(column, &lv_font_montserrat_14, color_conditions_accent(), LV_TEXT_ALIGN_CENTER, COLUMN_LABELS[i]);
+    lv_obj_set_style_text_letter_space(label, 2, 0);
+
+    lv_obj_t *value = create_label(column, &lv_font_montserrat_24, color_text_primary(), LV_TEXT_ALIGN_CENTER, "--");
+    lv_obj_set_width(value, LV_PCT(100));
+
+    s_ui.conditions_columns[i] = column;
+    s_ui.conditions_column_icons[i] = icon;
+    s_ui.conditions_column_labels[i] = label;
+    s_ui.conditions_column_values[i] = value;
+  }
+}
+
 static void build_message_view(lv_obj_t *parent)
 {
   s_ui.message_view = lv_obj_create(parent);
@@ -3103,6 +3547,35 @@ static void build_night_overlay(lv_obj_t *parent)
   lv_obj_add_flag(s_ui.night_overlay, LV_OBJ_FLAG_HIDDEN);
 }
 
+/* Settings sits above home: swipe up returns, like the Pi. Only presses on
+ * the overlay's own background reach this -- its panels, list, keyboard and
+ * buttons don't bubble events up -- so scrolling and typing stay theirs. */
+static void setup_overlay_gesture_cb(lv_event_t *event)
+{
+  lv_event_code_t code = lv_event_get_code(event);
+  lv_indev_t *indev = lv_indev_active();
+  if (indev == NULL || lv_event_get_target(event) != s_ui.setup_overlay) {
+    return;
+  }
+
+  lv_point_t point;
+  lv_indev_get_point(indev, &point);
+  if (code == LV_EVENT_PRESSED) {
+    s_ui.setup_gesture_tracking = true;
+    s_ui.setup_gesture_start = point;
+    return;
+  }
+
+  if ((code == LV_EVENT_RELEASED || code == LV_EVENT_PRESS_LOST) && s_ui.setup_gesture_tracking) {
+    s_ui.setup_gesture_tracking = false;
+    int delta_x = point.x - s_ui.setup_gesture_start.x;
+    int delta_y = point.y - s_ui.setup_gesture_start.y;
+    if (-delta_y >= SWIPE_THRESHOLD_PX && (LV_ABS(delta_y) * 10) > (LV_ABS(delta_x) * SWIPE_AXIS_RATIO_X10)) {
+      setup_cancel_event_cb(event);
+    }
+  }
+}
+
 static void build_setup_overlay(lv_obj_t *parent)
 {
   s_ui.setup_overlay = lv_obj_create(parent);
@@ -3114,6 +3587,9 @@ static void build_setup_overlay(lv_obj_t *parent)
   lv_obj_set_scrollbar_mode(s_ui.setup_overlay, LV_SCROLLBAR_MODE_OFF);
   lv_obj_add_flag(s_ui.setup_overlay, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_flag(s_ui.setup_overlay, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_event_cb(s_ui.setup_overlay, setup_overlay_gesture_cb, LV_EVENT_PRESSED, NULL);
+  lv_obj_add_event_cb(s_ui.setup_overlay, setup_overlay_gesture_cb, LV_EVENT_RELEASED, NULL);
+  lv_obj_add_event_cb(s_ui.setup_overlay, setup_overlay_gesture_cb, LV_EVENT_PRESS_LOST, NULL);
 
   lv_obj_t *title = create_label(
     s_ui.setup_overlay,
@@ -3650,6 +4126,212 @@ static void update_weather_labels(void)
       );
     }
   }
+
+  update_conditions_view();
+}
+
+static int32_t measure_text_width(const char *text, const lv_font_t *font, int32_t letter_space)
+{
+  lv_point_t size;
+  lv_text_get_size(&size, text != NULL ? text : "", font, letter_space, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+  return size.x;
+}
+
+/* Largest font in `fonts` (largest first) whose text fits max_width. The
+ * ESP32 only has fixed font sizes, so this is the Pi's shrink-to-fit with
+ * steps instead of single pixels. */
+static const lv_font_t *pick_font_to_fit(const char *text, const lv_font_t *const *fonts, int count, int32_t max_width)
+{
+  for (int i = 0; i < count; ++i) {
+    if (measure_text_width(text, fonts[i], 0) <= max_width) {
+      return fonts[i];
+    }
+  }
+  return fonts[count - 1];
+}
+
+static void apply_weather_indicator_state(lv_obj_t *indicator)
+{
+  if (indicator == NULL) {
+    return;
+  }
+
+  stop_indicator_pulse(indicator);
+  if (!s_ui.weather_alert_active) {
+    lv_obj_add_flag(indicator, LV_OBJ_FLAG_HIDDEN);
+    return;
+  }
+
+  lv_obj_clear_flag(indicator, LV_OBJ_FLAG_HIDDEN);
+  /* A8 asset: the recolor IS its color. Night shift keeps it red-toned. */
+  lv_obj_set_style_image_recolor(indicator, s_ui.night_overlay_active ? color_night_alert() : lv_color_hex(0xffb040), 0);
+  lv_obj_set_style_image_recolor_opa(indicator, LV_OPA_COVER, 0);
+  lv_obj_set_style_opa(indicator, EDGE_INDICATOR_PULSE_MIN_OPA, 0);
+  start_indicator_pulse(indicator);
+}
+
+static void update_weather_indicator_state(void)
+{
+  apply_weather_indicator_state(s_ui.analog_weather_indicator);
+  apply_weather_indicator_state(s_ui.digital_weather_indicator);
+}
+
+static lv_obj_t *create_weather_indicator(lv_obj_t *view)
+{
+  lv_obj_t *indicator = lv_image_create(view);
+  lv_image_set_src(indicator, &conditions_edge_indicator);
+  lv_obj_align(indicator, LV_ALIGN_TOP_LEFT, CONDITIONS_EDGE_INDICATOR_X, CONDITIONS_EDGE_INDICATOR_Y);
+  lv_obj_add_flag(indicator, LV_OBJ_FLAG_HIDDEN);
+  return indicator;
+}
+
+/* Colors that depend on night shift and alert state. */
+static void apply_conditions_colors(void)
+{
+  if (s_ui.conditions_view == NULL) {
+    return;
+  }
+
+  bool night = s_ui.night_overlay_active;
+  const storm_conditions_t *c = &s_ui.weather.conditions;
+  bool have = s_ui.weather.valid && s_ui.weather.has_conditions;
+  bool alert = have && c->alert;
+  bool wind_alert = false;
+  bool pressure_alert = false;
+  bool precip_alert = false;
+  for (int i = 0; have && i < c->alert_count; ++i) {
+    storm_alert_kind_t kind = c->alerts[i].kind;
+    wind_alert = wind_alert || kind == STORM_ALERT_GUSTS || kind == STORM_ALERT_WIND;
+    pressure_alert = pressure_alert || kind == STORM_ALERT_PRESSURE;
+    precip_alert = precip_alert || kind == STORM_ALERT_PRECIP || kind == STORM_ALERT_THUNDER;
+  }
+
+  lv_color_t alert_color = night ? color_night_alert() : color_alert();
+  lv_color_t accent = night ? color_night_muted() : color_conditions_accent();
+  lv_color_t primary = night ? color_night_primary() : color_text_primary();
+
+  lv_image_set_src(s_ui.conditions_stage_image, night ? &round_stage_night : &round_stage_day);
+  lv_obj_set_style_text_color(s_ui.conditions_headline, alert ? alert_color : primary, 0);
+  lv_obj_set_style_text_color(
+    s_ui.conditions_detail,
+    alert ? (night ? color_night_alert() : color_alert_soft()) : (night ? color_night_muted() : lv_color_hex(0xebf2ff)),
+    0
+  );
+
+  lv_obj_set_style_border_color(s_ui.conditions_ring, night ? color_night_muted() : lv_color_hex(0xd6e2f0), 0);
+  lv_obj_set_style_bg_color(s_ui.conditions_ring, night ? lv_color_hex(0x521e1e) : lv_color_hex(0x354e7e), 0);
+  for (int i = 0; i < COND_TICK_COUNT; ++i) {
+    if (s_ui.conditions_ticks[i] != NULL) {
+      lv_obj_set_style_line_color(s_ui.conditions_ticks[i], night ? color_night_muted() : lv_color_hex(0xe0e9f7), 0);
+    }
+  }
+  for (int i = 0; i < 4; ++i) {
+    lv_obj_set_style_text_color(s_ui.conditions_cardinals[i], night ? color_night_muted() : lv_color_hex(0xebf2ff), 0);
+  }
+  lv_obj_set_style_image_recolor(
+    s_ui.conditions_wind_arrow,
+    night ? color_night_alert() : (wind_alert ? color_alert() : color_conditions_accent()),
+    0
+  );
+
+  lv_obj_set_style_text_color(s_ui.conditions_speed_label, primary, 0);
+  lv_obj_set_style_text_color(s_ui.conditions_unit_label, night ? color_night_muted() : lv_color_hex(0xebf2ff), 0);
+  lv_obj_set_style_text_color(s_ui.conditions_from_label, night ? color_night_muted() : lv_color_hex(0xe8f0fb), 0);
+  lv_obj_set_style_text_color(
+    s_ui.conditions_gust_label,
+    wind_alert ? alert_color : (night ? color_night_muted() : lv_color_hex(0xe8f0fb)),
+    0
+  );
+
+  lv_obj_set_style_text_color(
+    s_ui.conditions_change_label,
+    night ? color_night_primary() : (have && c->changing ? lv_color_hex(0xd6eaff) : color_conditions_accent()),
+    0
+  );
+  for (int i = 0; i < 2; ++i) {
+    lv_obj_set_style_bg_color(s_ui.conditions_divider_lines[i], accent, 0);
+  }
+
+  bool column_alert[COND_COLUMN_COUNT] = {wind_alert, pressure_alert, precip_alert};
+  for (int i = 0; i < COND_COLUMN_COUNT; ++i) {
+    lv_obj_set_style_border_color(s_ui.conditions_columns[i], accent, 0);
+    lv_obj_set_style_image_recolor(
+      s_ui.conditions_column_icons[i],
+      night ? color_night_muted() : (column_alert[i] ? color_alert() : color_conditions_accent()),
+      0
+    );
+    lv_obj_set_style_text_color(s_ui.conditions_column_labels[i], accent, 0);
+    lv_obj_set_style_text_color(s_ui.conditions_column_values[i], column_alert[i] ? alert_color : primary, 0);
+  }
+}
+
+/* All wording comes from storm_conditions.c (shared with the Pi through the
+ * fixtures); this only places it. */
+static void update_conditions_view(void)
+{
+  if (s_ui.conditions_view == NULL) {
+    return;
+  }
+
+  bool have = s_ui.weather.valid && s_ui.weather.has_conditions;
+  const storm_conditions_t *c = &s_ui.weather.conditions;
+
+  static const lv_font_t *const HEADLINE_FONTS[] = {&lv_font_montserrat_32, &lv_font_montserrat_24};
+  static const lv_font_t *const DETAIL_FONTS[] = {&lv_font_montserrat_18, &lv_font_montserrat_14};
+  static const lv_font_t *const VALUE_FONTS[] = {&lv_font_montserrat_24, &lv_font_montserrat_18};
+  static const lv_font_t *const READOUT_FONTS[] = {&lv_font_montserrat_18, &lv_font_montserrat_14};
+
+  const char *headline = have ? c->headline : (s_ui.weather.valid ? "Weather unavailable" : "Checking the weather...");
+  const char *detail = have && c->has_detail ? c->detail : "";
+  set_conditions_arc_text(s_ui.conditions_headline, headline, pick_font_to_fit(headline, HEADLINE_FONTS, 2, COND_HEADLINE_MAX_PX));
+  set_conditions_arc_text(s_ui.conditions_detail, detail, pick_font_to_fit(detail, DETAIL_FONTS, 2, COND_DETAIL_MAX_PX));
+
+  char speed[8] = "--";
+  char gust[32] = "";
+  if (have && c->has_speed) {
+    snprintf(speed, sizeof(speed), "%d", c->speed);
+  }
+  if (have && c->has_gust) {
+    snprintf(gust, sizeof(gust), "gusts to %d %s", c->gust, c->wind_unit);
+  }
+  set_label_text(s_ui.conditions_speed_label, speed);
+  set_label_text(s_ui.conditions_unit_label, have ? c->wind_unit : "");
+  const char *from = have && c->has_direction ? c->from : "";
+  lv_obj_set_style_text_font(s_ui.conditions_from_label, pick_font_to_fit(from, READOUT_FONTS, 2, COND_WIND_WIDTH), 0);
+  set_label_text(s_ui.conditions_from_label, from);
+  lv_obj_set_style_text_font(s_ui.conditions_gust_label, pick_font_to_fit(gust, READOUT_FONTS, 2, COND_WIND_WIDTH), 0);
+  set_label_text(s_ui.conditions_gust_label, gust);
+
+  if (have && c->has_direction) {
+    lv_obj_clear_flag(s_ui.conditions_wind_arrow, LV_OBJ_FLAG_HIDDEN);
+    lv_image_set_rotation(s_ui.conditions_wind_arrow, (int32_t) lround(c->direction * 10.0));
+  } else {
+    lv_obj_add_flag(s_ui.conditions_wind_arrow, LV_OBJ_FLAG_HIDDEN);
+  }
+
+  set_label_text(s_ui.conditions_change_label, have ? c->change_label : "");
+
+  const char *values[COND_COLUMN_COUNT] = {
+    have ? c->outlook_status : "--",
+    have && c->pressure_status[0] != '\0' ? c->pressure_status : "--",
+    have ? c->precip_status : "--",
+  };
+  for (int i = 0; i < COND_COLUMN_COUNT; ++i) {
+    int32_t width = (i == 1 ? COND_COLUMN_MIDDLE_WIDTH : COND_COLUMN_SIDE_WIDTH) - 2 * COND_COLUMN_PAD;
+    lv_obj_set_style_text_font(s_ui.conditions_column_values[i], pick_font_to_fit(values[i], VALUE_FONTS, 2, width), 0);
+    set_label_text(s_ui.conditions_column_values[i], values[i]);
+  }
+
+  bool snow = have && strcmp(c->precip_label, "Snow") == 0;
+  lv_image_set_src(s_ui.conditions_column_icons[2], snow ? &conditions_icon_snow : &conditions_icon_rain);
+  set_label_text(s_ui.conditions_column_labels[2], snow ? "SNOW" : "RAIN");
+
+  bool alert_active = have && c->alert;
+  if (alert_active != s_ui.weather_alert_active) {
+    s_ui.weather_alert_active = alert_active;
+    update_weather_indicator_state();
+  }
+  apply_conditions_colors();
 }
 
 static void refresh_message_ui_state(
@@ -3768,6 +4450,7 @@ static void build_app_shell(const device_config_t *config)
 
   memset(&s_ui, 0, sizeof(s_ui));
   s_ui.config_snapshot = *config;
+  snapshot_weather_row();
 
   s_ui.stage = lv_obj_create(screen);
   lv_obj_set_size(s_ui.stage, LV_PCT(100), LV_PCT(100));
@@ -3781,6 +4464,8 @@ static void build_app_shell(const device_config_t *config)
   build_digital_view(s_ui.stage);
   yield_ui_bootstrap();
   build_forecast_view(s_ui.stage);
+  yield_ui_bootstrap();
+  build_conditions_view(s_ui.stage);
   yield_ui_bootstrap();
   build_message_view(s_ui.stage);
   yield_ui_bootstrap();
