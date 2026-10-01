@@ -161,11 +161,6 @@ const VIEW_LAYER_SELECTORS = {
   [VIEW_MODES.WIFI]: '.view-wifi'
 };
 
-function formatSigned(value) {
-  if (!Number.isFinite(value)) return '';
-  return `${value > 0 ? '+' : value < 0 ? '\u2212' : '\u00b1'}${Math.abs(value)}`;
-}
-
 function buildConditionsDialTicks() {
   const group = document.getElementById('conditions-dial-ticks');
   if (!group || group.childElementCount > 0) return;
@@ -202,6 +197,19 @@ function fitTextToWidth(el, maxPx, minPx) {
   if (el.scrollWidth > el.clientWidth) el.classList.add('is-wrapped');
 }
 
+// Curved-text version: shrink the font until the text spans no more than
+// maxLength px along its arc, which keeps it near the top of the circle.
+function fitTextToArc(textPathEl, maxPx, minPx, maxLength) {
+  const textEl = textPathEl?.parentNode;
+  if (!textEl || typeof textEl.getComputedTextLength !== 'function') return;
+  let size = maxPx;
+  textEl.style.fontSize = `${size}px`;
+  while (textEl.getComputedTextLength() > maxLength && size > minPx) {
+    size -= 1;
+    textEl.style.fontSize = `${size}px`;
+  }
+}
+
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
@@ -232,17 +240,19 @@ function renderConditions(conditions) {
   const windAlert = alertKinds.has('gusts') || alertKinds.has('wind');
   face.classList.toggle('has-alert', weatherAlertActive);
   face.classList.toggle('has-wind-alert', windAlert);
+  face.classList.toggle('has-change', summary.changing === true);
 
   const headlineEl = document.getElementById('conditions-headline');
   if (headlineEl) {
     headlineEl.textContent = summary.headline || 'Weather unavailable';
-    fitTextToWidth(headlineEl, 31, 22);
+    fitTextToArc(headlineEl, 32, 22, 600);
   }
   const detailEl = document.getElementById('conditions-detail');
   if (detailEl) {
     detailEl.textContent = summary.detail || '';
-    fitTextToWidth(detailEl, 20, 16);
+    fitTextToArc(detailEl, 19, 15, 500);
   }
+  setText('conditions-change-label', summary.changeLabel || '\u00a0');
 
   setText('conditions-wind-speed', Number.isFinite(wind.speed) ? String(wind.speed) : '--');
   setText('conditions-wind-unit', units.wind || '');
@@ -253,6 +263,8 @@ function renderConditions(conditions) {
     gustEl.textContent = Number.isFinite(wind.gust) ? `gusts to ${wind.gust} ${units.wind || ''}`.trim() : '\u00a0';
     gustEl.classList.toggle('is-alert', windAlert);
   }
+  fitTextToWidth(document.getElementById('conditions-wind-from'), 22, 16);
+  if (gustEl) fitTextToWidth(gustEl, 22, 16);
 
   const flow = document.getElementById('conditions-wind-flow');
   if (flow) {
@@ -262,24 +274,26 @@ function renderConditions(conditions) {
     if (hasDirection) flow.setAttribute('transform', `rotate(${wind.direction} 200 200)`);
   }
 
-  setText('conditions-pressure-status', pressure.status || '--');
-  setText('conditions-pressure-meaning', pressure.meaning || '\u00a0');
-  fitTextToWidth(document.getElementById('conditions-pressure-status'), 28, 22);
-  fitTextToWidth(document.getElementById('conditions-pressure-meaning'), 18, 14);
-  let reading = '\u00a0';
-  if (Number.isFinite(pressure.value)) {
-    reading = `${pressure.value} ${units.pressure || ''}`.trim();
-    if (Number.isFinite(pressure.change)) reading += ` (${formatSigned(pressure.change)} in 3h)`;
-  }
-  setText('conditions-pressure-reading', reading);
-  document.querySelector('.conditions-stat-pressure')?.classList.toggle('is-alert', alertKinds.has('pressure'));
+  // Columns are a glance-able summary: one word or two per column. The
+  // explanation belongs in the headline, which says what matters when it
+  // matters.
+  const fit = (id, maxPx, minPx) => fitTextToWidth(document.getElementById(id), maxPx, minPx);
+  const outlook = wind.outlook || {};
+  setText('conditions-wind-outlook-status', outlook.status || '--');
+  fit('conditions-wind-outlook-status', 27, 18);
+  document.querySelector('.conditions-col-wind')?.classList.toggle('is-alert', windAlert);
 
+  setText('conditions-pressure-status', pressure.status || '--');
+  fit('conditions-pressure-status', 27, 18);
+  document.querySelector('.conditions-col-pressure')?.classList.toggle('is-alert', alertKinds.has('pressure'));
+
+  const isSnow = precip.label === 'Snow';
   setText('conditions-precip-label', precip.label || 'Rain');
   setText('conditions-precip-status', precip.status || '--');
-  setText('conditions-precip-detail', precip.detail || '\u00a0');
-  fitTextToWidth(document.getElementById('conditions-precip-status'), 28, 22);
-  fitTextToWidth(document.getElementById('conditions-precip-detail'), 18, 14);
-  document.querySelector('.conditions-stat-precip')?.classList.toggle('is-alert', alertKinds.has('precip') || alertKinds.has('thunder'));
+  document.getElementById('conditions-precip-icon-rain')?.style.setProperty('display', isSnow ? 'none' : '');
+  document.getElementById('conditions-precip-icon-snow')?.style.setProperty('display', isSnow ? '' : 'none');
+  fit('conditions-precip-status', 27, 18);
+  document.querySelector('.conditions-col-precip')?.classList.toggle('is-alert', alertKinds.has('precip') || alertKinds.has('thunder'));
 }
 
 function setViewMode(mode) {

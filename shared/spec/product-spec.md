@@ -44,16 +44,14 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
 
 ### Conditions View
 
-- No title; a plain-language headline and detail line lead the view, e.g.
-  `Calm and dry` / `for the next 6 hours`, or `Thunderstorms likely by 4 PM` /
-  `Gusts up to 58 mph by 4 PM`. Amber while an alert is active
-- Text fitting: the headline sits in a 440px-wide box (the circle is only
-  ~510px across at that height) and steps its font down from 31px to 22px
-  until it fits on one line, measured rather than guessed from length since
-  fonts differ per device (the Pi falls back to DejaVu Sans). The detail line
-  and the pressure/rain lines fit the same way. Only wrap as a last resort.
-  - ESP32-P4: measure with `lv_text_get_size` and pick from the available
-    font sizes the same way
+Top to bottom:
+
+- Headline and detail line curve along the top edge of the circle (text on
+  two concentric arcs). Amber while an alert is active. Each is fitted to a
+  maximum arc length (headline 600px, detail 500px) by stepping the font
+  down, measured rather than guessed since fonts differ per device.
+  - ESP32-P4: draw text along an arc (LVGL's arc label if the bundled LVGL
+    version has it, otherwise per-glyph placement), same fit rule.
 - Wind compass: ring with N/E/S/W labels and ticks; a weathervane-style
   arrow crosses the dial in the direction the wind is moving: fletching
   (three swept-back strokes) on the upwind side, a filled arrowhead pointing
@@ -64,17 +62,29 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
     with `lv_image_set_rotation` like the clock hands, recoloring it for
     normal / alert / night shift. The Pi's glow is decorative only.
 - Inside the compass: wind speed and unit, `from the <direction>` (8-point,
-  spelled out), and `gusts to <n> <unit>` only when gusts exceed the speed
-- Pressure column: status word and a hedged plain-language line, with the
-  raw reading and its 3h change as small print:
-  - `Rising` / `Can mean clearer weather`
-  - `Steady` / `Weather likely to stay the same`
-  - `Dropping` / `Can mean clouds or rain`
-  - `Dropping fast` / `Can mean a storm is coming`
-- Rain (or Snow) column: `None expected`, `Possible (n%)`, `Likely (n%)`,
-  or `Raining now`, plus the expected amount by the end of the next 6h
+  spelled out), and `gusts to <n> <unit>` only when gusts exceed the speed;
+  the two lines are fitted to a width that clears the W/E letters
+- Divider (`summary.changeLabel`): `Conditions changing` when something
+  concrete is forecast (an alert, rain now or likely, wind picking up or
+  easing, a front or a day-to-day swing); `Conditions may change` for early
+  hints only (falling pressure, a low chance of rain); otherwise
+  `Conditions steady`
+- Three columns with line icons, separated by thin rules. Each is just
+  icon, label and one value -- a glance-able summary; explanations belong
+  in the headline, which says what matters when it matters:
+  - Wind: the outlook, not the current wind (the compass shows that):
+    `Picking up`, `Easing` or `Steady`
+  - Pressure: `Rising`, `Steady`, `Dropping`, `Dropping fast`
+  - Rain (Snow, with a snowflake icon, when snow is expected): `No rain`,
+    `<n>% chance`, or `Raining` / `Snowing`
+- Column values start at 27px and step down to 18px to stay on one line
+  (the middle column is slightly wider for `Dropping fast`). The payload
+  still carries `wind.outlook.detail`, `pressure.meaning` and `precip.detail`
+  for the headline logic and future use, but they aren't shown in columns
 - Values tied to an active alert turn amber
-- Night shift keeps everything red-toned, including the alert colors
+- Same face background as the other views (no scenery)
+- Night shift keeps everything red-toned, including the alert colors and
+  the curved SVG text
 - All wording comes from the shared logic, not the renderer
 
 ### Settings View
@@ -191,11 +201,12 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
   `shared/test-data/storm-conditions-cases.json`
 - Inputs: `current_weather` (live wind speed/direction) plus hourly
   `pressure_msl`, `wind_speed_10m`, `wind_gusts_10m`, `precipitation`,
-  `precipitation_probability`, `snowfall`, `weathercode`, requested with
+  `precipitation_probability`, `snowfall`, `weathercode`, `temperature_2m`
+  (in the configured temperature unit), plus daily `temperature_2m_max`, requested with
   `wind_speed_unit=kmh`; everything is computed in km/h, hPa, mm and
   converted for display (mph/inHg/in for imperial)
-- Pressure trend is the 3h change (falling/rising beyond 1 hPa, otherwise
-  steady); before 03:00 local, the next 3h forecast change is used instead
+- Pressure trend is the 3h change (falling/rising beyond 1.5 hPa, otherwise
+  steady -- wide enough to ignore the ~1 hPa twice-daily atmospheric tide); before 03:00 local, the next 3h forecast change is used instead
 - Alerts consider now through the next 3h:
   - `thunder`: weathercode 95/96/99
   - `gusts`: gusts >= 40 mph / 64 km/h, else `wind`: sustained >= 25 mph / 40 km/h
@@ -206,6 +217,18 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
   meaning) as the detail. With no alerts, in priority order: raining now,
   thunder later in the 6h outlook, gusts over the alert threshold later,
   rain likely, chance of rain, then `Breezy and dry` / `Calm and dry`
+- Things already happening say when they end, things on the way say when
+  they start: `Thunderstorms until 8 PM`, `Gusts up to 58 mph until 9 PM`,
+  `Heavy rain until 5 PM`, `Rain ending by 4 PM` vs `Thunderstorms likely by
+  4 PM`. Quiet-day priority: raining now (ending or ongoing), thunder later,
+  a front (`Turning much colder by 5 PM`: a drop of 15F / 8C within any 3h
+  of the outlook, so evening cooling doesn't count), gusts over the alert
+  threshold later, rain likely, chance of rain, a big day-to-day swing
+  (`Much colder tomorrow`: tomorrow's high 15F / 8C off today's), falling
+  pressure (`Dry for now` / `Falling pressure can mean rain later`), winds
+  easing, then `Breezy and dry` / `Calm and dry`
+- `summary.changeLevel` is `changing`, `may-change` or `steady` (see the
+  divider above); `summary.changing` is true only for `changing`
 - Times follow `timeFormat` (`6 PM` or `18:00`)
 
 ## Location Resolution Contract

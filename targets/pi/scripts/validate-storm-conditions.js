@@ -18,7 +18,7 @@ function assertSubset(actual, expected, path) {
 }
 
 for (const testCase of cases) {
-  const result = buildConditions(testCase.cfg, testCase.current, testCase.hourly);
+  const result = buildConditions(testCase.cfg, testCase.current, testCase.hourly, testCase.daily);
 
   if (testCase.expected === null) {
     assert.strictEqual(result, null, `${testCase.name}: expected null`);

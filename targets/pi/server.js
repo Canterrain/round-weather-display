@@ -1259,7 +1259,7 @@ app.get('/weather', async (req, res) => {
       `?latitude=${encodeURIComponent(cfg.lat)}` +
       `&longitude=${encodeURIComponent(cfg.lon)}` +
       `&current_weather=true` +
-      `&hourly=weathercode,precipitation_probability,precipitation,rain,showers,snowfall,cloud_cover,pressure_msl,wind_speed_10m,wind_gusts_10m` +
+      `&hourly=weathercode,precipitation_probability,precipitation,rain,showers,snowfall,cloud_cover,pressure_msl,wind_speed_10m,wind_gusts_10m,temperature_2m` +
       `&minutely_15=precipitation,snowfall` +
       `&daily=sunrise,sunset,temperature_2m_max,temperature_2m_min,weathercode` +
       `&temperature_unit=${encodeURIComponent(tempUnit)}` +
@@ -1371,7 +1371,7 @@ app.get('/weather', async (req, res) => {
         sunset: sunsetToday
       },
       forecast,
-      conditions: buildConditions(cfg, cur, hourly)
+      conditions: buildConditions(cfg, cur, hourly, daily)
     };
 
     lastGoodPayload = payload;

@@ -99,10 +99,16 @@
       </div>
       <div class="view-layer view-conditions" aria-hidden="true">
         <div class="conditions-face">
-          <div class="conditions-summary">
-            <div id="conditions-headline" class="conditions-headline">Checking the weather&hellip;</div>
-            <div id="conditions-detail" class="conditions-detail"></div>
-          </div>
+          <!-- Headline and detail curve along the top of the circle, so long
+               lines follow the edge instead of running into the bezel. -->
+          <svg class="conditions-arc" viewBox="0 0 760 760" aria-hidden="true">
+            <defs>
+              <path id="conditions-arc-headline-path" d="M 58 380 A 322 322 0 0 1 702 380"></path>
+              <path id="conditions-arc-detail-path" d="M 94 380 A 286 286 0 0 1 666 380"></path>
+            </defs>
+            <text class="conditions-headline"><textPath id="conditions-headline" href="#conditions-arc-headline-path" startOffset="50%" text-anchor="middle">Checking the weather&hellip;</textPath></text>
+            <text class="conditions-detail"><textPath id="conditions-detail" href="#conditions-arc-detail-path" startOffset="50%" text-anchor="middle"></textPath></text>
+          </svg>
           <svg class="conditions-dial" viewBox="0 0 400 400" aria-hidden="true">
             <circle class="conditions-dial-ring" cx="200" cy="200" r="182"></circle>
             <g id="conditions-dial-ticks"></g>
@@ -129,16 +135,38 @@
             <div id="conditions-wind-from" class="conditions-wind-from">&nbsp;</div>
             <div id="conditions-wind-gust" class="conditions-wind-gust">&nbsp;</div>
           </div>
-          <div class="conditions-stat conditions-stat-pressure">
-            <div class="conditions-stat-label">Pressure</div>
-            <div id="conditions-pressure-status" class="conditions-stat-value">--</div>
-            <div id="conditions-pressure-meaning" class="conditions-stat-detail">&nbsp;</div>
-            <div id="conditions-pressure-reading" class="conditions-stat-fine">&nbsp;</div>
+          <div class="conditions-divider">
+            <span class="conditions-divider-line"></span>
+            <span id="conditions-change-label" class="conditions-divider-label">&nbsp;</span>
+            <span class="conditions-divider-line"></span>
           </div>
-          <div class="conditions-stat conditions-stat-precip">
-            <div id="conditions-precip-label" class="conditions-stat-label">Rain</div>
-            <div id="conditions-precip-status" class="conditions-stat-value">--</div>
-            <div id="conditions-precip-detail" class="conditions-stat-detail">&nbsp;</div>
+          <div class="conditions-columns">
+            <div class="conditions-col conditions-col-wind">
+              <svg class="conditions-col-icon" viewBox="0 0 32 32" aria-hidden="true">
+                <path d="M4 12 H19 a4 4 0 1 0 -4 -4"></path>
+                <path d="M4 18 H25 a4 4 0 1 1 -4 4"></path>
+                <path d="M4 24 H13"></path>
+              </svg>
+              <div class="conditions-col-label">Wind</div>
+              <div id="conditions-wind-outlook-status" class="conditions-col-value">--</div>
+            </div>
+            <div class="conditions-col conditions-col-pressure">
+              <svg class="conditions-col-icon" viewBox="0 0 32 32" aria-hidden="true">
+                <circle cx="16" cy="17" r="11"></circle>
+                <path d="M16 17 L21 11"></path>
+                <path d="M9 21 h2 M21 21 h2 M16 9 v2"></path>
+              </svg>
+              <div class="conditions-col-label">Pressure</div>
+              <div id="conditions-pressure-status" class="conditions-col-value">--</div>
+            </div>
+            <div class="conditions-col conditions-col-precip">
+              <svg class="conditions-col-icon" viewBox="0 0 32 32" aria-hidden="true">
+                <path id="conditions-precip-icon-rain" d="M16 4 C11 11 8 15 8 19 a8 8 0 0 0 16 0 c0 -4 -3 -8 -8 -15 Z"></path>
+                <path id="conditions-precip-icon-snow" style="display: none" d="M16 4 V28 M5.6 10 L26.4 22 M5.6 22 L26.4 10 M12 6 L16 9 L20 6 M12 26 L16 23 L20 26"></path>
+              </svg>
+              <div id="conditions-precip-label" class="conditions-col-label">Rain</div>
+              <div id="conditions-precip-status" class="conditions-col-value">--</div>
+            </div>
           </div>
         </div>
       </div>
