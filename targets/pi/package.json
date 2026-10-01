@@ -1,6 +1,6 @@
 {
   "name": "round-weather-display-pi",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "Raspberry Pi target for the round weather display",
   "main": "main.js",
   "private": true,
