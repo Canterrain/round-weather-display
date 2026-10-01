@@ -117,8 +117,8 @@ async function acknowledgeActiveMessage() {
     }
 
     await fetchMessages();
-    if (window.appView?.returnToLastHome) {
-      window.appView.returnToLastHome();
+    if (window.appView?.returnToHome) {
+      window.appView.returnToHome();
     } else if (window.appView?.setViewMode) {
       window.appView.setViewMode(window.appView.VIEW_MODES.CLOCK);
     }

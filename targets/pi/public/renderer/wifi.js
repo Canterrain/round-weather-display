@@ -1,6 +1,6 @@
 // On-device WiFi setup, mirroring the ESP32-P4's on-screen network picker so
 // the clock can recover from a lost WiFi connection without any other
-// device, keyboard, or monitor. Reached via the swipe-down-from-top gesture
+// device, keyboard, or monitor. Reached via the swipe-down-from-home gesture
 // added to setupSwipeNavigation() in weather.js, and auto-surfaced whenever
 // the device actually loses its WiFi connection (see pollWifiLinkStatus
 // below).
@@ -47,7 +47,7 @@ function ensureWifiViewBuilt() {
     <div class="wifi-face">
       <div class="wifi-title">Wi-Fi</div>
       <div id="wifi-status-line" class="wifi-status-line">Checking connection&hellip;</div>
-      <div id="wifi-network-list" class="wifi-network-list"></div>
+      <div id="wifi-network-list" class="wifi-network-list" data-swipe-exempt></div>
       <div id="wifi-password-panel" class="wifi-password-panel" hidden>
         <div id="wifi-selected-ssid" class="wifi-selected-ssid"></div>
         <div class="wifi-password-row">
@@ -59,7 +59,7 @@ function ensureWifiViewBuilt() {
           <button id="wifi-back-button" class="wifi-secondary-button" type="button">Back</button>
           <button id="wifi-connect-button" class="wifi-primary-button" type="button">Connect</button>
         </div>
-        <div id="wifi-keyboard" class="wifi-keyboard"></div>
+        <div id="wifi-keyboard" class="wifi-keyboard" data-swipe-exempt></div>
       </div>
       <button id="wifi-done-button" class="wifi-secondary-button wifi-done-button" type="button">Done</button>
     </div>
@@ -206,8 +206,8 @@ async function attemptConnect() {
 
     wifiState.consecutiveDisconnectedPolls = 0;
     wifiState.dismissedForThisOutage = false;
-    if (window.appView?.returnToLastHome) {
-      window.appView.returnToLastHome();
+    if (window.appView?.returnToHome) {
+      window.appView.returnToHome();
     }
   } catch (error) {
     wifiState.step = 'password';
@@ -321,8 +321,8 @@ function setupWifiViewEvents() {
   wifiEl('wifi-connect-button').addEventListener('click', attemptConnect);
 
   wifiEl('wifi-done-button').addEventListener('click', () => {
-    if (window.appView?.returnToLastHome) {
-      window.appView.returnToLastHome();
+    if (window.appView?.returnToHome) {
+      window.appView.returnToHome();
     }
   });
 
@@ -369,7 +369,7 @@ async function pollWifiLinkStatus() {
     wifiState.consecutiveDisconnectedPolls = 0;
     wifiState.dismissedForThisOutage = false;
     if (wasRecovering && isWifiViewOpen() && wifiState.step === 'list') {
-      window.appView?.returnToLastHome?.();
+      window.appView?.returnToHome?.();
     }
     return;
   }

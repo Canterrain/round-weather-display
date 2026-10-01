@@ -16,8 +16,7 @@ const VIEW_MODES = {
 };
 
 let currentViewMode = VIEW_MODES.CLOCK;
-let defaultHomeViewMode = VIEW_MODES.DIGITAL;
-let lastHomeViewMode = VIEW_MODES.DIGITAL;
+let homeViewMode = VIEW_MODES.DIGITAL;
 
 function setWeatherStatus(message) {
   const el = document.getElementById('weather-status');
@@ -156,10 +155,6 @@ function setViewMode(mode) {
     currentViewMode = VIEW_MODES.CLOCK;
   }
 
-  if (currentViewMode === VIEW_MODES.CLOCK || currentViewMode === VIEW_MODES.DIGITAL) {
-    lastHomeViewMode = currentViewMode;
-  }
-
   appShell.classList.toggle('mode-clock', currentViewMode === VIEW_MODES.CLOCK);
   appShell.classList.toggle('mode-digital', currentViewMode === VIEW_MODES.DIGITAL);
   appShell.classList.toggle('mode-forecast', currentViewMode === VIEW_MODES.FORECAST);
@@ -179,7 +174,15 @@ function setupSwipeNavigation() {
   let startX = null;
   let startY = null;
 
-  function begin(x, y) {
+  // Swipes that start on a [data-swipe-exempt] element (scrolling lists,
+  // on-screen keyboards, sliders) belong to that element, not navigation --
+  // otherwise scrolling the WiFi network list would bounce you back home.
+  function begin(x, y, target) {
+    if (target instanceof Element && target.closest('[data-swipe-exempt]')) {
+      startX = null;
+      startY = null;
+      return;
+    }
     startX = x;
     startY = y;
   }
@@ -192,42 +195,29 @@ function setupSwipeNavigation() {
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
-    // Swipe-down-from-the-very-top-edge always opens WiFi setup, regardless
-    // of the current view -- mirrors the same gesture just added to the
-    // ESP32-P4's setup screen, for consistency across both targets. Checked
-    // first so it can't be confused with the ordinary view-switching swipes
-    // below (which can happen anywhere else on the face).
-    const WIFI_TOP_EDGE_BAND_PX = 90;
-    const WIFI_SWIPE_DOWN_THRESHOLD_PX = 70;
-    if (startY <= WIFI_TOP_EDGE_BAND_PX && deltaY >= WIFI_SWIPE_DOWN_THRESHOLD_PX && absY > absX) {
-      setViewMode(VIEW_MODES.WIFI);
-      startX = null;
-      startY = null;
-      return;
-    }
+    const isHome = currentViewMode === VIEW_MODES.CLOCK || currentViewMode === VIEW_MODES.DIGITAL;
 
+    // Both clock faces share one set of gestures -- only the face picked at
+    // setup is reachable, so there's no analog/digital swipe anymore.
+    // Every screen is a fixed neighbour of home and returns with the
+    // opposite swipe:
+    //   left -> forecast, right -> messages, down -> WiFi (sits above home).
+    // Swipe up from home is intentionally unused (reserved for a future view
+    // below home).
     if (absX >= 70 && absX > absY * 1.5) {
-      if (currentViewMode === VIEW_MODES.CLOCK) {
+      if (isHome) {
         if (deltaX < 0) setViewMode(VIEW_MODES.FORECAST);
-        if (deltaX > 0) {
-          lastHomeViewMode = currentViewMode;
-          setViewMode(VIEW_MODES.MESSAGE);
-        }
-      } else if (currentViewMode === VIEW_MODES.DIGITAL) {
-        if (deltaX > 0) {
-          lastHomeViewMode = currentViewMode;
-          setViewMode(VIEW_MODES.MESSAGE);
-        }
+        if (deltaX > 0) setViewMode(VIEW_MODES.MESSAGE);
       } else if (currentViewMode === VIEW_MODES.FORECAST && deltaX > 0) {
-        setViewMode(VIEW_MODES.CLOCK);
+        setViewMode(homeViewMode);
       } else if (currentViewMode === VIEW_MODES.MESSAGE && deltaX < 0) {
-        setViewMode(lastHomeViewMode);
+        setViewMode(homeViewMode);
       }
     } else if (absY >= 70 && absY > absX * 1.5) {
-      if (currentViewMode === VIEW_MODES.CLOCK && deltaY > 0) {
-        setViewMode(VIEW_MODES.DIGITAL);
-      } else if (currentViewMode === VIEW_MODES.DIGITAL && deltaY < 0) {
-        setViewMode(VIEW_MODES.CLOCK);
+      if (isHome && deltaY > 0) {
+        setViewMode(VIEW_MODES.WIFI);
+      } else if (currentViewMode === VIEW_MODES.WIFI && deltaY < 0) {
+        setViewMode(homeViewMode);
       }
     }
 
@@ -238,7 +228,7 @@ function setupSwipeNavigation() {
   stage.addEventListener('touchstart', (event) => {
     const touch = event.changedTouches[0];
     if (!touch) return;
-    begin(touch.clientX, touch.clientY);
+    begin(touch.clientX, touch.clientY, event.target);
   }, { passive: true });
 
   stage.addEventListener('touchend', (event) => {
@@ -249,7 +239,7 @@ function setupSwipeNavigation() {
 
   stage.addEventListener('mousedown', (event) => {
     if (event.button !== 0) return;
-    begin(event.clientX, event.clientY);
+    begin(event.clientX, event.clientY, event.target);
   });
 
   stage.addEventListener('mouseup', (event) => {
@@ -264,10 +254,9 @@ async function fetchAppConfig() {
     const data = await response.json();
     if (!response.ok || data.error) return;
 
-    defaultHomeViewMode = data.defaultClockFace === 'analog'
+    homeViewMode = data.defaultClockFace === 'analog'
       ? VIEW_MODES.CLOCK
       : VIEW_MODES.DIGITAL;
-    lastHomeViewMode = defaultHomeViewMode;
   } catch (error) {
     console.error('Failed to load app config:', error);
   }
@@ -276,8 +265,7 @@ async function fetchAppConfig() {
 window.appView = {
   VIEW_MODES,
   getCurrentViewMode: () => currentViewMode,
-  getLastHomeViewMode: () => lastHomeViewMode,
-  returnToLastHome: () => setViewMode(lastHomeViewMode),
+  returnToHome: () => setViewMode(homeViewMode),
   setViewMode
 };
 
@@ -381,7 +369,7 @@ async function initializeWeatherUi() {
   setWeatherStatus('');
   setupSwipeNavigation();
   await fetchAppConfig();
-  setViewMode(defaultHomeViewMode);
+  setViewMode(homeViewMode);
   fetchWeather();
   setInterval(fetchWeather, WEATHER_REFRESH_INTERVAL_MS);
 }

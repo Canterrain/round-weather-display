@@ -51,17 +51,22 @@ This document freezes the current Raspberry Pi behavior so the ESP32-P4 target c
 
 ## Navigation Contract
 
-- From `analog`:
+- Home is whichever face `defaultClockFace` selects (`analog` or `digital`).
+  The other face is not reachable by gesture.
+- From home (either face):
   - swipe left -> `forecast`
   - swipe right -> `message`
-  - swipe down -> `digital`
-- From `digital`:
-  - swipe right -> `message`
-  - swipe up -> `analog`
+  - swipe down -> WiFi setup (Pi) / setup screen (ESP32-P4); anywhere on
+    the face, home only
+  - swipe up -> unused (reserved for a future view)
 - From `forecast`:
-  - swipe right -> last home view
+  - swipe right -> home
 - From `message`:
-  - swipe left -> last home view
+  - swipe left -> home
+- From WiFi setup:
+  - swipe up -> home
+- Swipes that start on a scrolling or interactive area (WiFi network list,
+  on-screen keyboard) are handled by that area and never navigate.
 - Swipe threshold:
   - at least 70 px
   - dominant axis must be at least 1.5x the other axis
